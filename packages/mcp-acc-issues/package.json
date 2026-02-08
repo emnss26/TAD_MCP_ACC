@@ -14,10 +14,9 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "zod": "^4.3.6"
   },
-  "workspaces": [
-    "packages/shared/*"
-  ],
+  
   "devDependencies": {
+    "@tad/shared": "workspace:*",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
