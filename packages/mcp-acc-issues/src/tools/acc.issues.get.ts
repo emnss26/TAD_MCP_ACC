@@ -1,6 +1,6 @@
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
-import { getAccAccessToken } from "@tad/acc-shared/aps/oauth.js";
+import { getAccAccessToken } from "@tad/shared";
 import { listIssues } from "../acc/issues.client.js";
 
 const Input = z.object({
