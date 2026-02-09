@@ -1,6 +1,5 @@
+import { loadSession, saveSession } from "./session.js";
 import type { ApsTokenResponse } from "../aps/types.js";
-
-let cached: { token: string; exp: number } | null = null;
 
 function must(name: string): string {
   const v = process.env[name];
@@ -9,22 +8,29 @@ function must(name: string): string {
 }
 
 export async function getAccAccessToken(): Promise<string> {
-  // Cache simple (evita pedir token en cada tool call)
-  const now = Math.floor(Date.now() / 1000);
-  if (cached && cached.exp - 60 > now) return cached.token;
-
   const clientId = must("APS_CLIENT_ID");
   const clientSecret = must("APS_CLIENT_SECRET");
-  const refreshToken = must("APS_REFRESH_TOKEN");
-  const scope = process.env.APS_SCOPE ?? "data:read data:write account:read";
+  
+  // 1. Intentar cargar sesión del archivo
+  const session = loadSession();
+  
+  if (!session) {
+    throw new Error("No hay sesión activa. Por favor pide a Claude: 'Inicia sesión en Autodesk'.");
+  }
 
+  // 2. Si el token es válido, retornarlo
+  const now = Math.floor(Date.now() / 1000);
+  if (session.expires_at > now + 60) {
+    return session.access_token;
+  }
+
+  // 3. Si expiró, renovar automáticamente usando el Refresh Token guardado
+  console.log("🔄 Renovando token caducado...");
   const url = "https://developer.api.autodesk.com/authentication/v2/token";
-
   const body = new URLSearchParams();
   body.set("grant_type", "refresh_token");
-  body.set("refresh_token", refreshToken);
-  body.set("scope", scope);
-
+  body.set("refresh_token", session.refresh_token);
+  
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
   const res = await fetch(url, {
@@ -37,12 +43,17 @@ export async function getAccAccessToken(): Promise<string> {
   });
 
   if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`APS token error ${res.status}: ${t}`);
+    throw new Error("La sesión ha expirado irremediablemente. Por favor pide a Claude: 'Inicia sesión en Autodesk' nuevamente.");
   }
 
   const json = (await res.json()) as ApsTokenResponse;
 
-  cached = { token: json.access_token, exp: now + json.expires_in };
+  // 4. Guardar los nuevos tokens automáticamente
+  saveSession({
+    access_token: json.access_token,
+    refresh_token: json.refresh_token!, // Importante: APS devuelve un nuevo refresh token
+    expires_at: now + json.expires_in
+  });
+
   return json.access_token;
 }
