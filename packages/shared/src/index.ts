@@ -1,16 +1,19 @@
-export * from "./aps/oauth.js";
-export * from "./aps/types.js";
-export * from "./aps/session.js";
-
 export {
+  // Nombres “ACC explícitos” (los que usan tus tools)
+  startAccLogin,
+  completeAccLogin,
+  getAccAuthStatus,
+  logoutAcc,
+  getAccAccessToken,
+
+  // Aliases “genéricos” por compatibilidad (si algún paquete viejo los usa)
   beginLogin,
   completeLogin,
   getAuthStatus,
   logout,
-  ensureAccessToken
+  ensureAccessToken,
 } from "./auth/authManager.js";
 
-export { getContext, setContext } from "./config/contextStore.js";
+export type { AccAuthStatus } from "./auth/types.js";
 
-export { getAccAccessToken } from "./aps/oauth.js";
-
+export { getContext, setContext, clearContext } from "./config/contextStore.js";
