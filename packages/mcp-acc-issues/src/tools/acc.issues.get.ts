@@ -11,19 +11,20 @@ const Input = z.object({
 
 type InputArgs = z.infer<typeof Input>;
 
-export function listIssuesTool(server: McpServer) {
+export function registerAccIssuesList(server: McpServer) {
   server.registerTool(
     "acc_issues_list",
     {
       title: "ACC Issues - List",
-      description: "Lista issues de Autodesk Construction Cloud (ACC) para un proyecto.",
+      description: "Lista issues de ACC para un proyecto. Requiere sesión (acc_auth_start).",
       inputSchema: Input.shape
     },
     async (args: InputArgs) => {
       const token = await getAccAccessToken();
       const projectId = args.projectId ?? process.env.ACC_PROJECT_ID!;
-      const data = await listIssues({ token, projectId, limit: args.limit, offset: args.offset });
+      if (!projectId) throw new Error("Missing ACC_PROJECT_ID env var or projectId input.");
 
+      const data = await listIssues({ token, projectId, limit: args.limit, offset: args.offset });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
