@@ -1,8 +1,8 @@
 import http from "node:http";
 import { URL } from "node:url";
 
-import { mustGetEnv, getCallbackUrl, getScopesFromEnv } from "./env.js";
-import { createPkcePair, randomString } from "./pkce.js";
+import { mustGetEnv, getScopesFromEnv } from "./env.js";
+import { createPkcePair } from "./pkce.js";
 import {
   buildAuthorizeUrl,
   exchangeCodeForToken,
@@ -15,25 +15,38 @@ export type AccAuthStatus =
   | { loggedIn: false; pendingLogin: boolean; message: string }
   | { loggedIn: true; pendingLogin: boolean; expiresAt: string; profile?: StoredTokens["profile"] };
 
-const DEFAULT_SCOPES = ["data:read"]; // fallback si APS_SCOPES no existe
+const DEFAULT_SCOPES = ["data:read", "account:read"];
 const EXP_SKEW_SECONDS = 60;
 
-let pending:
-  | {
-      server: http.Server;
-      state: string;
-      verifier: string;
-      challenge: string;
-      scopes: string[];
-      callbackUrl: string;
-      callbackPath: string;
-      timeout: NodeJS.Timeout;
-    }
-  | null = null;
+let pending: {
+  server: http.Server;
+  redirectUri: string;   // fijo, viene de env
+  state: string;
+  verifier: string;      // PKCE verifier
+  challenge: string;     // PKCE challenge
+  scopes: string[];
+  callbackPath: string;
+} | null = null;
+
+function randomString(len = 16): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
 
 function isExpired(tokens: StoredTokens): boolean {
   const expiresAtMs = tokens.obtained_at + tokens.expires_in * 1000;
-  return Date.now() > expiresAtMs - EXP_SKEW_SECONDS * 1000;
+  return Date.now() > (expiresAtMs - EXP_SKEW_SECONDS * 1000);
+}
+
+function getRedirectUriFromEnv(): string {
+  const v =
+    process.env.APS_CALLBACK_URL ??
+    process.env.APS_REDIRECT_URI ??
+    mustGetEnv("APS_CALLBACK_URL");
+
+  return String(v).replace(/^'+|'+$/g, "").trim();
 }
 
 export async function startAccLogin(): Promise<{
@@ -42,47 +55,60 @@ export async function startAccLogin(): Promise<{
   note: string;
 }> {
   const clientId = mustGetEnv("APS_CLIENT_ID");
-  const callbackUrl = getCallbackUrl(); // <-- APS_CALLBACK_URL fijo
   const scopes = getScopesFromEnv(DEFAULT_SCOPES);
 
-  // Si ya hay login pendiente, reusamos el mismo (no levantamos otro server)
+  // Si ya hay login pendiente, NO generes PKCE nuevo (debe matchear el que se usará al intercambiar el code)
   if (pending) {
-    const authorizationUrl = buildAuthorizeUrl({
-      clientId,
-      redirectUri: pending.callbackUrl,
-      scopes: pending.scopes,
-      state: pending.state,
-      codeChallenge: pending.challenge
-    });
-
     return {
-      authorizationUrl,
-      redirectUri: pending.callbackUrl,
-      note: "Ya había un login pendiente. Abre el URL y termina el flujo."
+      authorizationUrl: buildAuthorizeUrl({
+        clientId,
+        redirectUri: pending.redirectUri,
+        scopes: pending.scopes,
+        state: pending.state,
+        codeChallenge: pending.challenge
+      }),
+      redirectUri: pending.redirectUri,
+      note: "Ya hay un login pendiente. Abre el URL y completa el flujo en el navegador."
     };
   }
 
-  const cb = new URL(callbackUrl);
-  const callbackPath = cb.pathname || "/callback";
-  const port = cb.port ? Number(cb.port) : 8787;
+  const redirectUri = getRedirectUriFromEnv();
+  const ru = new URL(redirectUri);
 
+  const port = Number(ru.port || "0");
+  if (!port) {
+    throw new Error(
+      `APS_CALLBACK_URL debe incluir puerto. Ej: http://localhost:8787/callback (actual: ${redirectUri})`
+    );
+  }
+
+  const callbackPath = ru.pathname || "/callback";
+  const state = randomString(32);
+
+  // ✅ PKCE: generar y guardar
   const { verifier, challenge } = createPkcePair();
-  const state = randomString(16);
 
   const server = http.createServer(async (req, res) => {
-    // IMPORTANTÍSIMO: NO cierres el server por requests que no sean el callback.
     try {
-      const reqUrl = new URL(req.url ?? "/", `${cb.protocol}//${cb.host}`);
+      const base = `${ru.protocol}//${ru.host}`;
+      const url = new URL(req.url ?? "/", base);
 
-      if (reqUrl.pathname !== callbackPath) {
+      // Health para debug: abre http://localhost:8787/ y debe responder
+      if (url.pathname === "/" || url.pathname === "/health") {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("ACC Auth callback server is running ✅");
+        return;
+      }
+
+      if (url.pathname !== callbackPath) {
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         res.end("Not found");
         return;
       }
 
-      const err = reqUrl.searchParams.get("error");
-      const code = reqUrl.searchParams.get("code");
-      const gotState = reqUrl.searchParams.get("state");
+      const err = url.searchParams.get("error");
+      const code = url.searchParams.get("code");
+      const gotState = url.searchParams.get("state");
 
       if (err) {
         res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
@@ -96,9 +122,10 @@ export async function startAccLogin(): Promise<{
         return;
       }
 
+      // ✅ Intercambio code -> token (requiere codeVerifier)
       const token = await exchangeCodeForToken({
         code,
-        redirectUri: pending.callbackUrl,
+        redirectUri: pending.redirectUri,
         codeVerifier: pending.verifier,
         scopes: pending.scopes
       });
@@ -115,46 +142,34 @@ export async function startAccLogin(): Promise<{
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(`
         <html>
-          <body style="font-family: sans-serif; text-align:center; padding:50px;">
+          <body style="font-family: sans-serif; text-align: center; padding: 40px;">
             <h1 style="color: #16a34a;">✅ Login successful</h1>
-            <p>Tokens guardados. Puedes cerrar esta ventana y volver a Claude.</p>
-            <script>try{window.close();}catch(e){}</script>
+            <p>Token y refresh token guardados. Ya puedes volver a Claude.</p>
           </body>
         </html>
       `);
-
-      // Cerrar flujo sólo después de éxito
-      cleanupPending();
     } catch (e: any) {
       res.writeHead(500, { "Content-Type": "text/html; charset=utf-8" });
       res.end(`<h1>Server error</h1><pre>${String(e?.message ?? e)}</pre>`);
-      cleanupPending();
+    } finally {
+      if (pending) {
+        pending.server.close();
+        pending = null;
+      }
     }
   });
 
-  // Escucha en el puerto fijo. OJO: NO fijamos host para que "localhost" funcione bien (IPv4/IPv6).
+  // ✅ Puerto fijo del callback
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, () => resolve());
   });
 
-  // Timeout para no dejar un server colgado si el usuario se va por café
-  const timeout = setTimeout(() => cleanupPending(), 10 * 60 * 1000);
-
-  pending = {
-    server,
-    state,
-    verifier,
-    challenge,
-    scopes,
-    callbackUrl,
-    callbackPath,
-    timeout
-  };
+  pending = { server, redirectUri, state, verifier, challenge, scopes, callbackPath };
 
   const authorizationUrl = buildAuthorizeUrl({
     clientId,
-    redirectUri: callbackUrl,
+    redirectUri,
     scopes,
     state,
     codeChallenge: challenge
@@ -162,22 +177,15 @@ export async function startAccLogin(): Promise<{
 
   return {
     authorizationUrl,
-    redirectUri: callbackUrl,
-    note: `Abre el URL. Al aprobar, verás "Login successful" en ${callbackUrl}. Luego corre acc_auth_status o acc_issues_list.`
+    redirectUri,
+    note:
+      "Abre el URL, autoriza y verás 'Login successful'. Luego corre acc_auth_status o acc_issues_list (sin copiar códigos)."
   };
-}
-
-function cleanupPending() {
-  if (!pending) return;
-  clearTimeout(pending.timeout);
-  try {
-    pending.server.close();
-  } catch {}
-  pending = null;
 }
 
 export async function getAccAuthStatus(): Promise<AccAuthStatus> {
   const tokens = await readTokens();
+
   if (!tokens) {
     return {
       loggedIn: false,
@@ -196,7 +204,10 @@ export async function getAccAuthStatus(): Promise<AccAuthStatus> {
 }
 
 export async function logoutAcc(): Promise<{ ok: true }> {
-  cleanupPending();
+  if (pending) {
+    pending.server.close();
+    pending = null;
+  }
   await clearTokens();
   return { ok: true };
 }
