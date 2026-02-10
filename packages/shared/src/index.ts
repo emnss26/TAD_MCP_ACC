@@ -1,19 +1,25 @@
-export {
-  // Nombres “ACC explícitos” (los que usan tus tools)
-  startAccLogin,
-  completeAccLogin,
-  getAccAuthStatus,
-  logoutAcc,
-  getAccAccessToken,
+export type {
+  ApsTokenResponse,
+  AuthStatus,
+  StartLoginResult,
+  StoredAccSession
+} from "./auth/types.js";
 
-  // Aliases “genéricos” por compatibilidad (si algún paquete viejo los usa)
+export {
+  // exports “genéricos”
   beginLogin,
   completeLogin,
   getAuthStatus,
   logout,
   ensureAccessToken,
+  saveSession,
+  loadSession,
+
+  // aliases “ACC-friendly” (los que usa mcp-acc-issues)
+  beginLogin as startAccLogin,
+  getAuthStatus as getAccAuthStatus,
+  logout as logoutAcc,
+  ensureAccessToken as getAccAccessToken
 } from "./auth/authManager.js";
 
-export type { AccAuthStatus } from "./auth/types.js";
-
-export { getContext, setContext, clearContext } from "./config/contextStore.js";
+export { getContext, setContext } from "./config/contextStore.js";

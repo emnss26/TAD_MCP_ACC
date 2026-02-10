@@ -1,40 +1,67 @@
 import crypto from "node:crypto";
-import { getContext, setContext, clearContext } from "../config/contextStore.js";
-import type { AccTokens, AccAuthStatus } from "./types.js";
+import { getContext, setContext } from "../config/contextStore.js";
+import type {
+  ApsTokenResponse,
+  AuthStatus,
+  StartLoginResult,
+  StoredAccSession
+} from "./types.js";
 
 const AUTH_BASE = "https://developer.api.autodesk.com/authentication/v2";
 const AUTHORIZE_URL = `${AUTH_BASE}/authorize`;
 const TOKEN_URL = `${AUTH_BASE}/token`;
 
-function mustEnv(name: string) {
-  const v = process.env[name];
+function requiredEnv(name: string): string {
+  const v = process.env[name]?.trim();
   if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
 }
 
-function basicAuthHeader(clientId: string, clientSecret: string) {
-  const b64 = Buffer.from(`${clientId}:${clientSecret}`, "utf8").toString("base64");
-  return `Basic ${b64}`;
+function getClient() {
+  return {
+    clientId: requiredEnv("APS_CLIENT_ID"),
+    clientSecret: requiredEnv("APS_CLIENT_SECRET"),
+    redirectUri: requiredEnv("APS_REDIRECT_URI")
+  };
+}
+
+function getScope(): string {
+  // Puedes controlar esto por env; default razonable
+  return (process.env.APS_SCOPES?.trim() ||
+    "data:read data:write account:read") as string;
+}
+
+function randomState(): string {
+  return crypto.randomBytes(16).toString("hex");
 }
 
 function nowMs() {
   return Date.now();
 }
 
-function isExpired(tokens: AccTokens, skewMs = 60_000) {
-  const expiresAt = tokens.obtained_at + tokens.expires_in * 1000;
-  return nowMs() + skewMs >= expiresAt;
+function encodeBasicAuth(user: string, pass: string) {
+  return Buffer.from(`${user}:${pass}`).toString("base64");
 }
 
-/**
- * 1) Start login: genera URL para que el usuario haga login y te regrese el `code`.
- */
-export async function startAccLogin() {
-  const clientId = mustEnv("APS_CLIENT_ID");
-  const redirectUri = mustEnv("APS_REDIRECT_URI");
-  const scope = (process.env.APS_SCOPES || "data:read account:read").trim();
+function formUrlEncode(body: Record<string, string>) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(body)) p.set(k, v);
+  return p.toString();
+}
 
-  const state = crypto.randomBytes(16).toString("hex");
+export function saveSession(session: StoredAccSession) {
+  setContext({ acc: { session } });
+}
+
+export function loadSession(): StoredAccSession | null {
+  const ctx = getContext() as any;
+  return ctx?.acc?.session ?? null;
+}
+
+export async function beginLogin(): Promise<StartLoginResult> {
+  const { clientId, redirectUri } = getClient();
+  const state = randomState();
+  const scope = getScope();
 
   const url = new URL(AUTHORIZE_URL);
   url.searchParams.set("response_type", "code");
@@ -43,154 +70,166 @@ export async function startAccLogin() {
   url.searchParams.set("scope", scope);
   url.searchParams.set("state", state);
 
-  await setContext({
-    accAuth: {
-      pendingState: state,
-      scope,
-      redirectUri,
-    },
-  });
+  // guardamos state para validar completion (simple)
+  setContext({ acc: { pending: { state, redirectUri, scope, createdAt: nowMs() } } });
+
+  const instructions =
+    "1) Abre el URL en tu navegador y autoriza.\n" +
+    "2) Te redirigirá a tu redirect_uri con ?code=...\n" +
+    "3) Copia el URL completo o solo el code y ejecútalo en el tool: acc_auth_login";
+
+  const note =
+    "Tip: si copias el URL completo, yo extraigo el code automáticamente. " +
+    "Sí, Windows te va a meter CRLF… pero al token endpoint no le importa 😄";
 
   return {
     url: url.toString(),
+    authorizationUrl: url.toString(),
     state,
     scope,
-    instructions:
-      "Abre el URL, autoriza, y pega aquí el parámetro `code` que regresa en el redirect.",
+    redirectUri,
+    instructions,
+    note
   };
 }
 
-/**
- * 2) Complete login: intercambia `code` por tokens y los guarda.
- */
-export async function completeAccLogin(params: { code: string; state?: string }) {
-  const { code, state } = params;
+export async function completeLogin(args: { codeOrUrl: string }) {
+  const { clientId, clientSecret, redirectUri } = getClient();
 
-  const clientId = mustEnv("APS_CLIENT_ID");
-  const clientSecret = mustEnv("APS_CLIENT_SECRET");
-  const redirectUri = mustEnv("APS_REDIRECT_URI");
+  const ctx = getContext() as any;
+  const pending = ctx?.acc?.pending;
 
-  const ctx = await getContext<any>();
-  const pendingState: string | undefined = ctx?.accAuth?.pendingState;
+  const code = extractCode(args.codeOrUrl);
+  if (!code) throw new Error("No code found. Provide the redirected URL or the code value.");
 
-  if (pendingState && state && pendingState !== state) {
-    throw new Error("Invalid OAuth state (possible CSRF or stale login).");
+  // (opcional) valida state si viene en url
+  const state = extractState(args.codeOrUrl);
+  if (pending?.state && state && pending.state !== state) {
+    throw new Error("State mismatch. Run acc_auth_start again.");
   }
-
-  const body = new URLSearchParams();
-  body.set("grant_type", "authorization_code");
-  body.set("code", code);
-  body.set("redirect_uri", redirectUri);
 
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: {
-      Authorization: basicAuthHeader(clientId, clientSecret),
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": `Basic ${encodeBasicAuth(clientId, clientSecret)}`,
+      "Content-Type": "application/x-www-form-urlencoded"
     },
-    body,
+    body: formUrlEncode({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirectUri
+    })
   });
 
+  const text = await res.text();
   if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`APS token exchange failed (${res.status}): ${txt}`);
+    throw new Error(`APS token error ${res.status}: ${text}`);
   }
 
-  const json = (await res.json()) as Omit<AccTokens, "obtained_at">;
-  const tokens: AccTokens = { ...json, obtained_at: nowMs() };
+  const token = JSON.parse(text) as ApsTokenResponse;
 
-  await setContext({
-    accTokens: tokens,
-    accAuth: {
-      ...(ctx?.accAuth || {}),
-      pendingState: undefined,
-    },
-  });
+  const expiresAt = nowMs() + Math.max(0, (token.expires_in - 60)) * 1000;
 
-  return {
-    ok: true,
-    expiresAt: tokens.obtained_at + tokens.expires_in * 1000,
-    scope: tokens.scope,
-  };
-}
-
-/**
- * 3) Acceso seguro: refresca si expiró.
- */
-export async function getAccAccessToken() {
-  const clientId = mustEnv("APS_CLIENT_ID");
-  const clientSecret = mustEnv("APS_CLIENT_SECRET");
-
-  const ctx = await getContext<any>();
-  const tokens: AccTokens | undefined = ctx?.accTokens;
-
-  if (!tokens?.refresh_token) {
-    throw new Error("Not authenticated. Run acc_auth_start and complete login first.");
-  }
-
-  if (!isExpired(tokens)) return tokens.access_token;
-
-  const body = new URLSearchParams();
-  body.set("grant_type", "refresh_token");
-  body.set("refresh_token", tokens.refresh_token);
-
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      Authorization: basicAuthHeader(clientId, clientSecret),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`APS refresh failed (${res.status}): ${txt}`);
-  }
-
-  const json = (await res.json()) as Omit<AccTokens, "obtained_at">;
-
-  // Nota: a veces refresh_token no cambia; conserva el existente si no viene
-  const refreshed: AccTokens = {
-    ...tokens,
-    ...json,
-    refresh_token: json.refresh_token || tokens.refresh_token,
-    obtained_at: nowMs(),
-  };
-
-  await setContext({ accTokens: refreshed });
-  return refreshed.access_token;
-}
-
-export async function getAccAuthStatus(): Promise<AccAuthStatus> {
-  const ctx = await getContext<any>();
-  const tokens: AccTokens | undefined = ctx?.accTokens;
-
-  if (!tokens) {
-    return { loggedIn: false, hasRefreshToken: false };
-  }
-
-  const expiresAt = tokens.obtained_at + tokens.expires_in * 1000;
-
-  return {
-    loggedIn: Boolean(tokens.refresh_token),
-    hasRefreshToken: Boolean(tokens.refresh_token),
+  const session: StoredAccSession = {
+    accessToken: token.access_token,
+    refreshToken: token.refresh_token,
     expiresAt,
-    scope: tokens.scope,
-    projectId: process.env.ACC_PROJECT_ID,
+    scope: token.scope,
+    tokenType: token.token_type
+  };
+
+  saveSession(session);
+
+  // limpia pending
+  setContext({ acc: { session, pending: null } });
+
+  return token;
+}
+
+export function getAuthStatus(): AuthStatus {
+  const session = loadSession();
+  if (!session) return { loggedIn: false };
+  const valid = session.expiresAt > nowMs();
+  return {
+    loggedIn: !!session.accessToken,
+    expiresAt: session.expiresAt,
+    scope: session.scope
   };
 }
 
-export async function logoutAcc() {
-  await clearContext(["accTokens", "accAuth"]);
-  return { ok: true };
+export function logout() {
+  setContext({ acc: { session: null, pending: null } });
 }
 
-/**
- * Aliases genéricos (por si otros paquetes se cuelgan de nombres viejos).
- */
-export const beginLogin = startAccLogin;
-export const completeLogin = completeAccLogin;
-export const getAuthStatus = getAccAuthStatus;
-export const logout = logoutAcc;
-export const ensureAccessToken = getAccAccessToken;
+export async function ensureAccessToken(): Promise<string> {
+  const { clientId, clientSecret } = getClient();
+  const session = loadSession();
+
+  if (!session) {
+    throw new Error("Not logged in. Run acc_auth_start then acc_auth_login.");
+  }
+
+  // todavía válido
+  if (session.expiresAt > nowMs() && session.accessToken) return session.accessToken;
+
+  if (!session.refreshToken) {
+    throw new Error("No refresh token found. Run login again (acc_auth_start).");
+  }
+
+  const res = await fetch(TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${encodeBasicAuth(clientId, clientSecret)}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: formUrlEncode({
+      grant_type: "refresh_token",
+      refresh_token: session.refreshToken
+    })
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`APS refresh error ${res.status}: ${text}`);
+  }
+
+  const token = JSON.parse(text) as ApsTokenResponse;
+
+  const expiresAt = nowMs() + Math.max(0, (token.expires_in - 60)) * 1000;
+
+  const next: StoredAccSession = {
+    accessToken: token.access_token,
+    refreshToken: token.refresh_token ?? session.refreshToken,
+    expiresAt,
+    scope: token.scope ?? session.scope,
+    tokenType: token.token_type ?? session.tokenType
+  };
+
+  saveSession(next);
+
+  return next.accessToken;
+}
+
+function extractCode(codeOrUrl: string): string | null {
+  try {
+    if (codeOrUrl.includes("http://") || codeOrUrl.includes("https://")) {
+      const u = new URL(codeOrUrl);
+      return u.searchParams.get("code");
+    }
+    return codeOrUrl.trim() || null;
+  } catch {
+    return codeOrUrl.trim() || null;
+  }
+}
+
+function extractState(codeOrUrl: string): string | null {
+  try {
+    if (codeOrUrl.includes("http://") || codeOrUrl.includes("https://")) {
+      const u = new URL(codeOrUrl);
+      return u.searchParams.get("state");
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

@@ -1,16 +1,36 @@
-export type AccTokens = {
+export type ApsTokenResponse = {
   access_token: string;
-  refresh_token: string;
-  token_type?: string;
-  expires_in: number;     // seconds
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
   scope?: string;
-  obtained_at: number;    // epoch ms
 };
 
-export type AccAuthStatus = {
-  loggedIn: boolean;
-  hasRefreshToken: boolean;
-  expiresAt?: number;     // epoch ms
+export type StoredAccSession = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: number; // epoch ms
   scope?: string;
-  projectId?: string;
+  tokenType?: string;
+};
+
+export type AuthStatus = {
+  loggedIn: boolean;
+  expiresAt?: number;
+  scope?: string;
+};
+
+export type StartLoginResult = {
+  // para no romper tools viejas:
+  url: string;
+  // para que tu tool destructuree bonito:
+  authorizationUrl: string;
+
+  state: string;
+  scope: string;
+  redirectUri: string;
+
+  // texto de ayuda para el usuario
+  instructions: string;
+  note: string;
 };

@@ -6,12 +6,12 @@ export function registerAccAuthLogout(server: McpServer) {
     "acc_auth_logout",
     {
       title: "ACC Auth - Logout",
-      description: "Borra tokens guardados y cierra cualquier login pendiente.",
-      inputSchema: {}
+      description: "Borra la sesión ACC almacenada.",
+      inputSchema: {},
     },
     async () => {
-      const res = await logoutAcc();
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
+      logoutAcc();
+      return { content: [{ type: "text", text: "Logout OK. Sesión ACC eliminada." }] };
     }
   );
 }

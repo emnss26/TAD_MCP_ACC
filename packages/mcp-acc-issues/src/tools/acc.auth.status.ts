@@ -6,11 +6,11 @@ export function registerAccAuthStatus(server: McpServer) {
     "acc_auth_status",
     {
       title: "ACC Auth - Status",
-      description: "Muestra si hay sesión activa y cuándo expira el token.",
-      inputSchema: {}
+      description: "Muestra si ya hay sesión activa y cuándo expira.",
+      inputSchema: {},
     },
     async () => {
-      const status = await getAccAuthStatus();
+      const status = getAccAuthStatus();
       return { content: [{ type: "text", text: JSON.stringify(status, null, 2) }] };
     }
   );

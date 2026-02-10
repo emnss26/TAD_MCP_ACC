@@ -1,52 +1,44 @@
-import fs from "node:fs/promises";
+import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-type ContextShape = Record<string, unknown>;
+type Context = Record<string, unknown>;
 
-const DEFAULT_DIR = path.join(os.homedir(), ".tad-mcp-acc");
-const DEFAULT_FILE = path.join(DEFAULT_DIR, "context.json");
+const defaultDir = path.join(os.homedir(), ".tad-mcp");
+const defaultPath = path.join(defaultDir, "context.json");
 
-function getStorePath() {
-  return process.env.TAD_CONTEXT_PATH || DEFAULT_FILE;
-}
-
-async function ensureDir(filePath: string) {
+function ensureDir(filePath: string) {
   const dir = path.dirname(filePath);
-  await fs.mkdir(dir, { recursive: true });
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-export async function getContext<T = ContextShape>(): Promise<T> {
-  const filePath = getStorePath();
+function readJson(filePath: string): Context {
   try {
-    const raw = await fs.readFile(filePath, "utf8");
-    return JSON.parse(raw) as T;
+    if (!fs.existsSync(filePath)) return {};
+    const raw = fs.readFileSync(filePath, "utf-8");
+    return raw.trim() ? (JSON.parse(raw) as Context) : {};
   } catch {
-    return {} as T;
+    return {};
   }
 }
 
-export async function setContext(patch: Partial<ContextShape>) {
-  const filePath = getStorePath();
-  await ensureDir(filePath);
-
-  const current = await getContext<ContextShape>();
-  const next = { ...current, ...patch };
-
-  await fs.writeFile(filePath, JSON.stringify(next, null, 2), "utf8");
-  return next;
+function writeJson(filePath: string, data: Context) {
+  ensureDir(filePath);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
 }
 
-export async function clearContext(keys?: string[]) {
+function getStorePath() {
+  return process.env.TAD_CONTEXT_PATH?.trim() || defaultPath;
+}
+
+export function getContext(): Context {
+  return readJson(getStorePath());
+}
+
+export function setContext(patch: Context): Context {
   const filePath = getStorePath();
-  const current = await getContext<ContextShape>();
-
-  const next =
-    !keys || keys.length === 0
-      ? {}
-      : Object.fromEntries(Object.entries(current).filter(([k]) => !keys.includes(k)));
-
-  await ensureDir(filePath);
-  await fs.writeFile(filePath, JSON.stringify(next, null, 2), "utf8");
+  const current = readJson(filePath);
+  const next = { ...current, ...patch };
+  writeJson(filePath, next);
   return next;
 }

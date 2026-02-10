@@ -4,18 +4,15 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerAccAuthStart } from "./tools/acc.auth.start.js";
 import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
 import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
+import { registerAccAuthLogin } from "./tools/acc.auth.login.js";
 import { registerAccIssuesList } from "./tools/acc.issues.get.js";
 
-import { registerLoginTool } from "./tools/acc.auth.login.js";
-
-// CAMBIO: Usamos McpServer en vez de Server
 const server = new McpServer({
-    name: "MCP_ACC_Issues",
-    version: "0.1.0"
+  name: "MCP_ACC_Issues",
+  version: "0.1.0",
 });
 
-
-registerLoginTool(server);
+registerAccAuthLogin(server);
 registerAccAuthStart(server);
 registerAccAuthStatus(server);
 registerAccAuthLogout(server);
