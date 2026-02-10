@@ -21,7 +21,7 @@ function getClient() {
   return {
     clientId: requiredEnv("APS_CLIENT_ID"),
     clientSecret: requiredEnv("APS_CLIENT_SECRET"),
-    redirectUri: requiredEnv("APS_REDIRECT_URI")
+    redirectUri: requiredEnv("APS_CALLBACK_URL")
   };
 }
 
