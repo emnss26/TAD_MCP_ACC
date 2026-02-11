@@ -6,7 +6,7 @@ export function registerAccAuthStart(server: McpServer) {
     "acc_auth_start",
     {
       title: "ACC Auth - Start",
-      description: "Inicia el flujo de autenticación automática para ACC.",
+      description: "Genera el URL para iniciar el flujo de login automático.",
       inputSchema: {},
     },
     async () => {
@@ -14,12 +14,9 @@ export function registerAccAuthStart(server: McpServer) {
 
       return {
         content: [
-          { 
-            type: "text", 
-            text: `🔗 URL DE AUTORIZACIÓN:\n${authorizationUrl}\n\n` +
-                  `📍 REDIRECT URI: ${redirectUri}\n\n` +
-                  `📝 NOTA: ${note}` 
-          },
+          { type: "text", text: `🔗 URL de Autorización:\n${authorizationUrl}` },
+          { type: "text", text: `📍 Redirect URI: ${redirectUri}` },
+          { type: "text", text: `📝 Nota: ${note}` },
         ],
       };
     }

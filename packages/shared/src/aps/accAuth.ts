@@ -124,7 +124,7 @@ export async function startAccLogin() {
   return {
     authorizationUrl: buildAuthorizeUrl({ clientId, redirectUri, scopes, state, codeChallenge: challenge }),
     redirectUri,
-    note: "El servidor de callback está activo. Al autorizar, se guardará el token."
+    note: "El servidor de callback está activo. Al autorizar, se guardará el token y el servidor se cerrará solo."
   };
 }
 
@@ -137,7 +137,7 @@ export async function getAccAuthStatus(): Promise<AccAuthStatus> {
       message: pending ? "Login en curso..." : "No hay sesión activa."
     };
   }
-  const expiresAtMs = tokens.obtained_at + tokens.expires_in * 1000;
+  const expiresAtMs = tokens.obtained_at + (tokens.expires_in || 0) * 1000;
   return {
     loggedIn: true,
     pendingLogin: !!pending,

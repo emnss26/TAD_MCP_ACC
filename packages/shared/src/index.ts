@@ -1,7 +1,8 @@
-// Tipos de ACC Auth
+// Tipos
 export type { AccAuthStatus } from "./aps/accAuth.js";
+export type { StoredTokens } from "./aps/tokenStore.js";
 
-// Lógica principal de ACC (PKCE + Auto Callback)
+// Lógica de Autenticación APS/ACC
 export {
   startAccLogin,
   getAccAuthStatus,
@@ -9,8 +10,8 @@ export {
   getAccAccessToken
 } from "./aps/accAuth.js";
 
-// Almacenamiento de tokens
+// Utilidades de almacenamiento
 export { readTokens, writeTokens, clearTokens } from "./aps/tokenStore.js";
 
-// Contexto genérico (si lo sigues usando para otras cosas)
+// Configuración global
 export { getContext, setContext } from "./config/contextStore.js";
