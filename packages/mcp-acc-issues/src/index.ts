@@ -6,6 +6,7 @@ import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
 import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
 
 import { registerAccIssuesList } from "./tools/acc.issues.get.js";
+import { registerIssueContextTools } from "./tools/acc.issues.context.js";
 
 const server = new McpServer({
   name: "MCP_ACC_Issues",
@@ -17,6 +18,7 @@ registerAccAuthStart(server);
 registerAccAuthStatus(server);
 registerAccAuthLogout(server);
 registerAccIssuesList(server);
+registerIssueContextTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
