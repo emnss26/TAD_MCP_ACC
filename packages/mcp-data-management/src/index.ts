@@ -1,0 +1,29 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+// ✅ Importa desde tus herramientas locales, no desde shared
+import { registerAccAuthStart } from "./tools/acc.auth.start.js";
+import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
+import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
+import { registerGetProjects } from "./tools/dm.get.projects.js";
+
+const server = new McpServer({
+  name: "mcp-acc-data-management",
+  version: "1.0.0",
+});
+
+// Registrar herramientas de Auth locales
+registerAccAuthStart(server);
+registerAccAuthStatus(server);
+registerAccAuthLogout(server);
+
+// Registrar herramientas de Data Management
+registerGetProjects(server);
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("Data Management MCP Server running... ✅");
+}
+
+main().catch(console.error);
