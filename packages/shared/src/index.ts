@@ -1,25 +1,16 @@
-export type {
-  ApsTokenResponse,
-  AuthStatus,
-  StartLoginResult,
-  StoredAccSession
-} from "./auth/types.js";
+// Tipos de ACC Auth
+export type { AccAuthStatus } from "./aps/accAuth.js";
 
+// Lógica principal de ACC (PKCE + Auto Callback)
 export {
-  // exports “genéricos”
-  beginLogin,
-  completeLogin,
-  getAuthStatus,
-  logout,
-  ensureAccessToken,
-  saveSession,
-  loadSession,
+  startAccLogin,
+  getAccAuthStatus,
+  logoutAcc,
+  getAccAccessToken
+} from "./aps/accAuth.js";
 
-  // aliases “ACC-friendly” (los que usa mcp-acc-issues)
-  beginLogin as startAccLogin,
-  getAuthStatus as getAccAuthStatus,
-  logout as logoutAcc,
-  ensureAccessToken as getAccAccessToken
-} from "./auth/authManager.js";
+// Almacenamiento de tokens
+export { readTokens, writeTokens, clearTokens } from "./aps/tokenStore.js";
 
+// Contexto genérico (si lo sigues usando para otras cosas)
 export { getContext, setContext } from "./config/contextStore.js";

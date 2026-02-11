@@ -6,17 +6,20 @@ export function registerAccAuthStart(server: McpServer) {
     "acc_auth_start",
     {
       title: "ACC Auth - Start",
-      description: "Genera el URL para iniciar login 3-legged en APS/ACC.",
+      description: "Inicia el flujo de autenticación automática para ACC.",
       inputSchema: {},
     },
     async () => {
-      const { authorizationUrl, redirectUri, instructions, note } = await startAccLogin();
+      const { authorizationUrl, redirectUri, note } = await startAccLogin();
 
       return {
         content: [
-          { type: "text", text: `Authorization URL:\n${authorizationUrl}` },
-          { type: "text", text: `Redirect URI:\n${redirectUri}` },
-          { type: "text", text: `Instructions:\n${instructions}\n\n${note}` },
+          { 
+            type: "text", 
+            text: `🔗 URL DE AUTORIZACIÓN:\n${authorizationUrl}\n\n` +
+                  `📍 REDIRECT URI: ${redirectUri}\n\n` +
+                  `📝 NOTA: ${note}` 
+          },
         ],
       };
     }
