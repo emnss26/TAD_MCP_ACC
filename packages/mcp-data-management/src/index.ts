@@ -6,6 +6,8 @@ import { registerAccAuthStart } from "./tools/acc.auth.start.js";
 import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
 import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
 import { registerGetProjects } from "./tools/dm.get.projects.js";
+import { registerGetProjectDetails } from "./tools/dm.get.project.js"; // La del JSON de relationships
+import { registerGetFolderContents } from "./tools/dm.get.folder.contents.js";
 
 const server = new McpServer({
   name: "mcp-acc-data-management",
@@ -19,6 +21,8 @@ registerAccAuthLogout(server);
 
 // Registrar herramientas de Data Management
 registerGetProjects(server);
+registerGetProjectDetails(server); 
+registerGetFolderContents(server);
 
 async function main() {
   const transport = new StdioServerTransport();
