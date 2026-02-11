@@ -3,32 +3,23 @@ import { getAccAccessToken } from "@tad/shared";
 const BASE_URL = "https://developer.api.autodesk.com/project/v1";
 const DATA_URL = "https://developer.api.autodesk.com/data/v1";
 
-export async function getHubProjects(hubId: string) {
+async function fetchAps(url: string) {
   const token = await getAccAccessToken();
-  const res = await fetch(`${BASE_URL}/hubs/${hubId}/projects`, {
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (!res.ok) throw new Error(`Error APS (Projects): ${res.status}`);
-  const data = await res.json();
-  return data.data;
-}
-
-// NUEVA: Obtener detalle del proyecto (donde vienen los relationships)
-export async function getProjectDetails(hubId: string, projectId: string) {
-  const token = await getAccAccessToken();
-  const res = await fetch(`${BASE_URL}/hubs/${hubId}/projects/${projectId}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error(`Error APS (Project Details): ${res.status}`);
+  if (!res.ok) throw new Error(`Error APS (${res.status}): ${res.statusText}`);
   return await res.json();
 }
 
-// NUEVA: Listar contenido de una carpeta (archivos y subcarpetas)
-export async function getFolderContents(projectId: string, folderId: string) {
-  const token = await getAccAccessToken();
-  const res = await fetch(`${DATA_URL}/projects/${projectId}/folders/${folderId}/contents`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error(`Error APS (Folder Contents): ${res.status}`);
-  return await res.json();
-}
+export const getHubProjects = (hubId: string) => 
+  fetchAps(`${BASE_URL}/hubs/${hubId}/projects`).then(r => r.data);
+
+export const getProjectDetails = (hubId: string, projectId: string) => 
+  fetchAps(`${BASE_URL}/hubs/${hubId}/projects/${projectId}`);
+
+export const getFolderContents = (projectId: string, folderId: string) => 
+  fetchAps(`${DATA_URL}/projects/${projectId}/folders/${folderId}/contents`);
+
+export const getItemVersions = (projectId: string, itemId: string) => 
+  fetchAps(`${DATA_URL}/projects/${projectId}/items/${itemId}/versions`);

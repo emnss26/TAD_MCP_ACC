@@ -14,7 +14,10 @@
   "private": "true",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/shared",
+    "packages/mcp-acc-issues",
+    "packages/mcp-data-management"
   ],
   "devDependencies": {
     "@types/node": "^25.2.2",

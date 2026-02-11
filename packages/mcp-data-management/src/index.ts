@@ -8,6 +8,7 @@ import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
 import { registerGetProjects } from "./tools/dm.get.projects.js";
 import { registerGetProjectDetails } from "./tools/dm.get.project.js"; // La del JSON de relationships
 import { registerGetFolderContents } from "./tools/dm.get.folder.contents.js";
+import { registerGetItemVersions } from "./tools/dm.get.versions.js";
 
 const server = new McpServer({
   name: "mcp-acc-data-management",
@@ -23,6 +24,7 @@ registerAccAuthLogout(server);
 registerGetProjects(server);
 registerGetProjectDetails(server); 
 registerGetFolderContents(server);
+registerGetItemVersions(server);
 
 async function main() {
   const transport = new StdioServerTransport();
