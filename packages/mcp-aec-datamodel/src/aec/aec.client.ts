@@ -1,6 +1,6 @@
 import { queryAecDataModel } from "@tad/shared";
 
-// Query para encontrar el Project ID de GraphQL (base64) usando el hubId de REST
+// Query para encontrar el Project ID de GraphQL (base64)
 export const GET_PROJECTS_QUERY = `
   query GetProjects($hubId: String!) {
     projects(hubId: $hubId) {
@@ -12,9 +12,9 @@ export const GET_PROJECTS_QUERY = `
   }
 `;
 
-// Query maestra para cantidades y propiedades
-export const GET_ELEMENT_DATA_QUERY = `
-  query GetElementData($projectId: ID!, $filter: ElementFilterInput) {
+// Query Maestra: Extrae elementos y TODAS sus propiedades técnicas
+export const GET_ELEMENT_DETAILS_QUERY = `
+  query GetElementDetails($projectId: ID!, $filter: ElementFilterInput) {
     elementsByProject(projectId: $projectId, filter: $filter) {
       results {
         id
@@ -24,6 +24,7 @@ export const GET_ELEMENT_DATA_QUERY = `
             name
             value
             displayValue
+            description
           }
         }
       }

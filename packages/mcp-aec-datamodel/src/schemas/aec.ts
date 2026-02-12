@@ -4,8 +4,8 @@ export const AecProjectSchema = z.object({
   hubId: z.string().describe("ID del Hub de Autodesk (b.xxx)")
 });
 
-export const AecElementSchema = z.object({
+export const AecElementQuerySchema = z.object({
   projectId: z.string().describe("ID del proyecto en formato GraphQL (Base64)"),
-  category: z.string().optional().describe("Categoría de Revit (ej: Walls, Windows)"),
-  type: z.string().optional().describe("Nombre del tipo de elemento (ej: w01)")
+  filterQuery: z.string().describe("Query de filtrado en lenguaje AEC (ej: property.name.Category == 'Walls' and property.value.Area > 10)"),
+  propertiesToFetch: z.array(z.string()).optional().describe("Lista opcional de nombres de propiedades específicas a mostrar (ej: ['Area', 'Length', 'Volume'])")
 });
