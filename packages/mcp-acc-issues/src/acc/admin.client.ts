@@ -27,3 +27,7 @@ export const getIssueTypes = (containerId: string) =>
 // Obtener definiciones de atributos personalizados
 export const getCustomAttributeDefinitions = (containerId: string) => 
   fetchAps(`${ISSUES_URL}/containers/${containerId}/issue-attribute-definitions`);
+
+// Obtener el mapeo (para saber qué atributos pertenecen a qué tipo de Issue)
+export const getIssueAttributeMappings = (containerId: string) => 
+  fetchAps(`${ISSUES_URL}/containers/${containerId}/issue-attribute-mappings`);

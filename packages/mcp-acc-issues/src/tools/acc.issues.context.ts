@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getProjectUsers, getIssueTypes, getCustomAttributeDefinitions } from "../acc/admin.client.js";
+import { getProjectUsers, getIssueTypes, getCustomAttributeDefinitions,getIssueAttributeMappings  } from "../acc/admin.client.js";
 
 const ContextSchema = z.object({
   projectId: z.string().describe("ID del proyecto (b.xxx)"),
@@ -12,14 +12,15 @@ export function registerIssueContextTools(server: McpServer) {
     "acc_get_issue_context",
     {
       title: "Issues - Get Context Mapping",
-      description: "Obtiene diccionarios de usuarios, tipos de incidencias y atributos para traducir IDs a nombres reales.",
+      description: "Obtiene diccionarios completos para traducir IDs de usuarios, tipos y atributos personalizados (incluyendo opciones de listas).",
       inputSchema: ContextSchema.shape,
     },
     async (args) => {
-      const [users, types, attrs] = await Promise.all([
+      const [users, types, attrs, mappings] = await Promise.all([
         getProjectUsers(args.projectId),
         getIssueTypes(args.containerId),
-        getCustomAttributeDefinitions(args.containerId)
+        getCustomAttributeDefinitions(args.containerId),
+        getIssueAttributeMappings(args.containerId)
       ]);
 
       const mapping = {
@@ -29,7 +30,18 @@ export function registerIssueContextTools(server: McpServer) {
           title: t.title,
           subtypes: t.subtypes.map((s: any) => ({ id: s.id, title: s.title }))
         })),
-        customAttributes: attrs.results.map((a: any) => ({ id: a.id, title: a.title, type: a.dataType }))
+        customAttributes: attrs.results.map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          dataType: a.dataType,
+          // Si es una lista, incluimos las opciones para traducir el ID del valor seleccionado
+          options: a.metadata?.list?.options ?? []
+        })),
+        attributeMappings: mappings.results.map((m: any) => ({
+          id: m.id,
+          definitionId: m.attributeDefinitionId,
+          mappedItemId: m.mappedItemId // ID del tipo/subtipo al que pertenece
+        }))
       };
 
       return {
