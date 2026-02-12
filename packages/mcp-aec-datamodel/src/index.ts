@@ -8,7 +8,7 @@ import { registerAecQuantities } from "./tools/aec.get.quantities.js";
 // Importamos herramientas de auth (copiadas localmente como en los otros módulos)
 import { registerAccAuthStart } from "./tools/acc.auth.start.js";
 import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
-import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
+import { registerAccLogout } from "./tools/acc.auth.logout.js";
 
 const server = new McpServer({
   name: "mcp-aec-datamodel",
@@ -18,7 +18,7 @@ const server = new McpServer({
 // Registro de herramientas de Autenticación
 registerAccAuthStart(server);
 registerAccAuthStatus(server);
-registerAccAuthLogout(server);
+registerAccLogout(server);
 
 // Registro de herramientas de AEC Data Model
 registerAecProjects(server);

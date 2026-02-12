@@ -7,7 +7,7 @@ export type { StoredTokens } from "./aps/tokenStore.js";
 export {
   startAccLogin,
   getAccAuthStatus,
-  logoutAcc,
+  logoutAcc as accLogout,
   getAccAccessToken
 } from "./aps/accAuth.js";
 

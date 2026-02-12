@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 // ✅ Importa desde tus herramientas locales, no desde shared
 import { registerAccAuthStart } from "./tools/acc.auth.start.js";
 import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
-import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
+import { registerAccLogout } from "./tools/acc.auth.logout.js";
 import { registerGetProjects } from "./tools/dm.get.projects.js";
 import { registerGetProjectDetails } from "./tools/dm.get.project.js"; // La del JSON de relationships
 import { registerGetFolderContents } from "./tools/dm.get.folder.contents.js";
@@ -18,7 +18,7 @@ const server = new McpServer({
 // Registrar herramientas de Auth locales
 registerAccAuthStart(server);
 registerAccAuthStatus(server);
-registerAccAuthLogout(server);
+registerAccLogout(server);
 
 // Registrar herramientas de Data Management
 registerGetProjects(server);
