@@ -14,7 +14,7 @@ export type AccAuthStatus =
   | { loggedIn: false; pendingLogin: boolean; message: string }
   | { loggedIn: true; pendingLogin: boolean; expiresAt: string; profile?: StoredTokens["profile"] };
 
-const DEFAULT_SCOPES = ["data:read", "account:read"];
+const DEFAULT_SCOPES = ["data:read", "data:write", "data:create", "account:read"];
 const EXP_SKEW_SECONDS = 60;
 
 let pending: {

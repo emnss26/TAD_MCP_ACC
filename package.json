@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "description": "",
-  "private": "true",
+  "private": true,
   "type": "module",
   "workspaces": [
     "packages/shared",
