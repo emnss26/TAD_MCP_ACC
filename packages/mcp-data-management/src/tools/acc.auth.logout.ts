@@ -1,17 +1,21 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { logoutAcc } from "@tad/shared";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { accLogout } from "@tad/shared";
+import { z } from "zod";
 
-export function registerAccAuthLogout(server: McpServer) {
+export function registerAccLogout(server: McpServer) {
   server.registerTool(
     "acc_auth_logout",
     {
-      title: "ACC Auth - Logout",
-      description: "Borra la sesión ACC almacenada.",
-      inputSchema: {},
+      title: "ACC Logout",
+      description: "Cierra la sesión y elimina los tokens de Autodesk.",
+      inputSchema: z.object({}).shape,
     },
     async () => {
-      logoutAcc();
-      return { content: [{ type: "text", text: "Logout OK. Sesión ACC eliminada." }] };
+      // FIX: Añadimos await para asegurar que los archivos de tokens se borren
+      await accLogout(); 
+      return {
+        content: [{ type: "text", text: "Sesión cerrada exitosamente." }],
+      };
     }
   );
 }

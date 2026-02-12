@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev:issues": "npm -w @tad/mcp-acc-issues run dev",
-    "build": "npm run build -w @tad/shared && npm run build -w @tad/mcp-acc-issues",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm run build -w packages/shared && npm run build -w packages/mcp-acc-issues && npm run build -w packages/mcp-data-management && npm run build -w packages/mcp-aec-datamodel",
+    "typecheck": "npm run typecheck --workspaces",
+    "dev:issues": "npm run dev -w packages/mcp-acc-issues",
+    "dev:dm": "npm run dev -w packages/mcp-data-management",
+    "dev:aec": "npm run dev -w packages/mcp-aec-datamodel"
   },
   "keywords": [],
   "author": "",
@@ -14,10 +16,10 @@
   "private": "true",
   "type": "module",
   "workspaces": [
-    "packages/*",
     "packages/shared",
     "packages/mcp-acc-issues",
-    "packages/mcp-data-management"
+    "packages/mcp-data-management",
+    "packages/mcp-aec-datamodel"
   ],
   "devDependencies": {
     "@types/node": "^25.2.3",

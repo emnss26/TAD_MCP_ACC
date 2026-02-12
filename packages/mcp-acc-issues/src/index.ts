@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 import { registerAccAuthStart } from "./tools/acc.auth.start.js";
 import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
-import { registerAccAuthLogout } from "./tools/acc.auth.logout.js";
+import { registerAccLogout } from "./tools/acc.auth.logout.js";
 
 import { registerAccIssuesList } from "./tools/acc.issues.get.js";
 import { registerIssueContextTools } from "./tools/acc.issues.context.js";
@@ -16,7 +16,7 @@ const server = new McpServer({
 
 registerAccAuthStart(server);
 registerAccAuthStatus(server);
-registerAccAuthLogout(server);
+registerAccLogout(server);
 registerAccIssuesList(server);
 registerIssueContextTools(server);
 

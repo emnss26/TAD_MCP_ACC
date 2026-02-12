@@ -19,3 +19,7 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+#Sesion
+.auth-session.json
+tokens.json
