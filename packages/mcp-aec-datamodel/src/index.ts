@@ -1,36 +1,31 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { registerAccAuthTools } from "@tad/shared";
 
-// Importamos las herramientas del paquete
+import { registerAecHubs } from "./tools/aec.get.hubs.js";
 import { registerAecProjects } from "./tools/aec.get.projects.js";
+import { registerAecElementsByProject } from "./tools/aec.get.elements.by.project.js";
 import { registerAecQuantities } from "./tools/aec.get.quantities.js";
-
-// Importamos herramientas de auth (copiadas localmente como en los otros módulos)
-import { registerAccAuthStart } from "./tools/acc.auth.start.js";
-import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
-import { registerAccLogout } from "./tools/acc.auth.logout.js";
 
 const server = new McpServer({
   name: "mcp-aec-datamodel",
   version: "1.0.0",
 });
 
-// Registro de herramientas de Autenticación
-registerAccAuthStart(server);
-registerAccAuthStatus(server);
-registerAccLogout(server);
+registerAccAuthTools(server);
 
-// Registro de herramientas de AEC Data Model
+registerAecHubs(server);
 registerAecProjects(server);
+registerAecElementsByProject(server);
 registerAecQuantities(server);
 
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("AEC Data Model MCP Server running... 🏗️");
+  console.error("AEC Data Model MCP Server running...");
 }
 
 main().catch((error) => {
-  console.error("Fatal error in main():", error);
+  console.error("Fatal error:", error);
   process.exit(1);
 });

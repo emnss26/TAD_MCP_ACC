@@ -1,5 +1,5 @@
 {
-  "name": "mcp-data-management",
+  "name": "@tad/mcp-data-management",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

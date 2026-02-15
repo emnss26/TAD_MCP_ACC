@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "npm run build -w packages/shared && npm run build -w packages/mcp-acc-issues && npm run build -w packages/mcp-data-management && npm run build -w packages/mcp-aec-datamodel",
+    "build": "npm run build -w packages/shared && npm run build -w packages/mcp-acc-issues && npm run build -w packages/mcp-acc-rfis && npm run build -w packages/mcp-acc-submittals && npm run build -w packages/mcp-acc-assets && npm run build -w packages/mcp-acc-transmittals && npm run build -w packages/mcp-acc-account-admin && npm run build -w packages/mcp-acc-files && npm run build -w packages/mcp-data-management && npm run build -w packages/mcp-aec-datamodel",
     "typecheck": "npm run typecheck --workspaces",
     "dev:issues": "npm run dev -w packages/mcp-acc-issues",
+    "dev:rfis": "npm run dev -w packages/mcp-acc-rfis",
+    "dev:submittals": "npm run dev -w packages/mcp-acc-submittals",
+    "dev:assets": "npm run dev -w packages/mcp-acc-assets",
+    "dev:transmittals": "npm run dev -w packages/mcp-acc-transmittals",
+    "dev:account-admin": "npm run dev -w packages/mcp-acc-account-admin",
+    "dev:files": "npm run dev -w packages/mcp-acc-files",
     "dev:dm": "npm run dev -w packages/mcp-data-management",
     "dev:aec": "npm run dev -w packages/mcp-aec-datamodel"
   },
@@ -18,6 +24,12 @@
   "workspaces": [
     "packages/shared",
     "packages/mcp-acc-issues",
+    "packages/mcp-acc-rfis",
+    "packages/mcp-acc-submittals",
+    "packages/mcp-acc-assets",
+    "packages/mcp-acc-transmittals",
+    "packages/mcp-acc-account-admin",
+    "packages/mcp-acc-files",
     "packages/mcp-data-management",
     "packages/mcp-aec-datamodel"
   ],

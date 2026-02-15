@@ -15,6 +15,12 @@
   "references": [
     { "path": "packages/shared" },
     { "path": "packages/mcp-acc-issues" },
+    { "path": "packages/mcp-acc-rfis" },
+    { "path": "packages/mcp-acc-submittals" },
+    { "path": "packages/mcp-acc-assets" },
+    { "path": "packages/mcp-acc-transmittals" },
+    { "path": "packages/mcp-acc-account-admin" },
+    { "path": "packages/mcp-acc-files" },
     { "path": "packages/mcp-data-management" },
     { "path": "packages/mcp-aec-datamodel" }
   ]

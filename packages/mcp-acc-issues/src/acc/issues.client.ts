@@ -1,4 +1,5 @@
 import { URL } from "node:url";
+import { fetchApsJson } from "@tad/shared";
 
 export async function listIssues(params: {
   token: string;
@@ -14,13 +15,27 @@ export async function listIssues(params: {
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("offset", String(offset));
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
+  return fetchApsJson(url.toString(), {
+    token,
+    serviceName: "issues.listIssues"
   });
+}
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`ACC Issues API error ${res.status}: ${body}`);
-  }
-  return res.json();
+export async function createIssue(params: {
+  token: string;
+  projectId: string;
+  payload: Record<string, unknown>;
+  region?: string;
+}) {
+  const { token, projectId, payload, region } = params;
+  return fetchApsJson(
+    `https://developer.api.autodesk.com/construction/issues/v1/projects/${projectId}/issues`,
+    {
+      method: "POST",
+      token,
+      headers: region ? { "x-ads-region": region } : undefined,
+      body: payload,
+      serviceName: "issues.createIssue"
+    }
+  );
 }

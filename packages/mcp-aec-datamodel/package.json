@@ -1,5 +1,5 @@
 {
-  "name": "mcp-aec-datamodel",
+  "name": "@tad/mcp-aec-datamodel",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

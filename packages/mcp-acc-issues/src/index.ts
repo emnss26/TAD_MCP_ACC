@@ -1,27 +1,29 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-
-import { registerAccAuthStart } from "./tools/acc.auth.start.js";
-import { registerAccAuthStatus } from "./tools/acc.auth.status.js";
-import { registerAccLogout } from "./tools/acc.auth.logout.js";
+import { registerAccAuthTools } from "@tad/shared";
 
 import { registerAccIssuesList } from "./tools/acc.issues.get.js";
 import { registerIssueContextTools } from "./tools/acc.issues.context.js";
 import { registerCreateIssue } from "./tools/acc.issues.create.js";
 
 const server = new McpServer({
-  name: "MCP_ACC_Issues",
-  version: "0.1.0",
+  name: "mcp-acc-issues",
+  version: "1.0.0"
 });
 
-
-registerAccAuthStart(server);
-registerAccAuthStatus(server);
-registerAccLogout(server);
+registerAccAuthTools(server);
 registerAccIssuesList(server);
 
 registerIssueContextTools(server);
 registerCreateIssue(server);
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("ACC Issues MCP Server running...");
+}
+
+main().catch((error) => {
+  console.error("Fatal error:", error);
+  process.exit(1);
+});

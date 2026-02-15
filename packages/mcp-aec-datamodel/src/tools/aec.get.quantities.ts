@@ -1,46 +1,56 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { AecElementQuerySchema } from "../schemas/aec.js"; //
-import { aecFetch, GET_ELEMENT_DETAILS_QUERY } from "../aec/aec.client.js"; //
+import { stringifyMcpPayload } from "@tad/shared";
+import { AecElementQuerySchema } from "../schemas/aec.js";
+import {
+  getAecElementsByProject,
+  getGraphQLProjectId,
+} from "../aec/aec.client.js";
 
 export function registerAecQuantities(server: McpServer) {
   server.registerTool(
     "aec_get_quantities",
     {
-      title: "AEC Data Model - Universal Query",
-      description: "Consulta avanzada de elementos de Revit. Permite filtrar por cualquier parámetro (categoría, material, dimensiones) y extraer sus valores técnicos.",
-      inputSchema: AecElementQuerySchema.shape, //
+      title: "AEC Data Model - Get Quantities",
+      description: "Obtiene elementos y propiedades para cuantificacion basica.",
+      inputSchema: AecElementQuerySchema.shape,
     },
     async (args) => {
-      const filter: any = {
-        query: args.filterQuery 
-      };
+      try {
+        const gqlProjectId = await getGraphQLProjectId(
+          args.classicHubId,
+          args.classicProjectId
+        );
 
-      const data = await aecFetch(GET_ELEMENT_DETAILS_QUERY, {
-        projectId: args.projectId,
-        filter: filter
-      });
+        const filterQuery = args.category
+          ? `property.name.category == '${args.category}'`
+          : undefined;
 
-      const results = data.elementsByProject.results;
+        const elements = await getAecElementsByProject(gqlProjectId, {
+          filterQuery,
+        });
 
-      if (!results || results.length === 0) {
         return {
-          content: [{ type: "text", text: "No se encontraron elementos." }]
+          content: [
+            {
+              type: "text",
+              text: stringifyMcpPayload(elements),
+            },
+          ],
+        };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[AEC Error] ${message}`);
+
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error al obtener cantidades: ${message}`,
+            },
+          ],
         };
       }
-
-      const report = results.map((el: any) => {
-        const item: any = { name: el.name, id: el.id };
-        el.properties.results.forEach((p: any) => {
-          if (!args.propertiesToFetch || args.propertiesToFetch.includes(p.name)) {
-            item[p.name] = p.displayValue;
-          }
-        });
-        return item;
-      });
-
-      return {
-        content: [{ type: "text", text: JSON.stringify(report, null, 2) }]
-      };
     }
   );
 }

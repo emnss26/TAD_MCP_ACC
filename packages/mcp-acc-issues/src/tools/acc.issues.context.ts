@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { stringifyMcpPayload } from "@tad/shared";
 import { z } from "zod";
 import { getProjectUsers, getIssueTypes, getCustomAttributeDefinitions,getIssueAttributeMappings  } from "../acc/admin.client.js";
 
@@ -45,7 +46,7 @@ export function registerIssueContextTools(server: McpServer) {
       };
 
       return {
-        content: [{ type: "text", text: JSON.stringify(mapping, null, 2) }]
+        content: [{ type: "text", text: stringifyMcpPayload(mapping) }]
       };
     }
   );

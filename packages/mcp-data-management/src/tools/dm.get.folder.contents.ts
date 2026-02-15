@@ -1,28 +1,60 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { buildMcpResponse,
+  stringifyMcpPayload
+} from "@tad/shared";
 import { FolderContentsSchema } from "../schemas/dm.js";
 import { getFolderContents } from "../dm/dm.client.js";
+
+function toFolderItem(item: any) {
+  const isFolder = item?.type === "folders";
+  return {
+    id: item?.id ?? null,
+    type: item?.type ?? null,
+    objectType: isFolder ? "folder" : "file",
+    name: item?.attributes?.displayName ?? null,
+    extensionType: item?.attributes?.extension?.type ?? null,
+    createTime: item?.attributes?.createTime ?? null,
+    lastModifiedTime: item?.attributes?.lastModifiedTime ?? null,
+    versionNumber: item?.attributes?.versionNumber ?? null
+  };
+}
 
 export function registerGetFolderContents(server: McpServer) {
   server.registerTool(
     "dm_list_folder",
     {
       title: "DM - List Folder Contents",
-      description: "Lista archivos y subcarpetas dentro de una carpeta específica.",
-      inputSchema: FolderContentsSchema.shape,
+      description: "Lista archivos y subcarpetas dentro de una carpeta especifica.",
+      inputSchema: FolderContentsSchema.shape
     },
     async (args) => {
       const raw = await getFolderContents(args.projectId, args.folderId);
-      
-      const items = raw.data.map((item: any) => {
-        const type = item.type === "folders" ? "📁 Carpeta" : "📄 Archivo";
-        return `${type}: ${item.attributes.displayName} (ID: ${item.id})`;
-      }).join("\n");
+      const data = Array.isArray(raw?.data) ? raw.data : [];
+      const results = data.map(toFolderItem);
+
+      const payload = buildMcpResponse({
+        results,
+        meta: {
+          tool: "dm_list_folder",
+          generatedAt: new Date().toISOString(),
+          source: "data.v1/projects/:projectId/folders/:folderId/contents",
+          projectId: args.projectId,
+          folderId: args.folderId
+        },
+        warnings:
+          results.length === 0
+            ? [
+                {
+                  code: "empty_folder",
+                  message: "La carpeta no contiene elementos visibles.",
+                  source: "dm_list_folder"
+                }
+              ]
+            : []
+      });
 
       return {
-        content: [{ 
-          type: "text", 
-          text: items || "La carpeta está vacía." 
-        }]
+        content: [{ type: "text", text: stringifyMcpPayload(payload) }]
       };
     }
   );
