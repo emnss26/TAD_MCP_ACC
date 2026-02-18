@@ -1,6 +1,8 @@
 import { getAccAccessToken } from "./accAuth.js";
 
-const AEC_DESIGN_URL = "https://developer.api.autodesk.com/aec/datamodel/v1/graphql";
+const AEC_GRAPHQL_URL =
+  process.env.APS_AEC_GRAPHQL_URL?.trim() ||
+  "https://developer.api.autodesk.com/aec/graphql";
 
 /**
  * Ejecuta una consulta GraphQL contra el AEC Data Model.
@@ -9,7 +11,7 @@ const AEC_DESIGN_URL = "https://developer.api.autodesk.com/aec/datamodel/v1/grap
 export async function queryAecDataModel(query: string, variables?: Record<string, any>) {
   const token = await getAccAccessToken();
   
-  const res = await fetch(AEC_DESIGN_URL, {
+  const res = await fetch(AEC_GRAPHQL_URL, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -20,7 +22,7 @@ export async function queryAecDataModel(query: string, variables?: Record<string
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`AEC Data Model Error (${res.status}): ${errorText}`);
+    throw new Error(`AEC Data Model Error (${res.status}) [${AEC_GRAPHQL_URL}]: ${errorText}`);
   }
 
   return await res.json();

@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+﻿import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   buildMcpResponse,
   clampListLimit,
@@ -31,8 +31,6 @@ export function registerAecProjects(server: McpServer) {
         const offset = parseOffsetCursor(args.cursor) ?? 0;
 
         const projects = await getAecProjects(hubId, {
-          filterQuery: args.filterQuery,
-          pageSize: limit,
           cursor: args.cursor,
         });
 

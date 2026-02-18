@@ -29,7 +29,7 @@ export function registerAecElementsByProject(server: McpServer) {
 
         const elements = await getAecElementsByProject(projectId, {
           filterQuery: args.filterQuery,
-          pageSize: limit,
+          
           cursor: args.cursor,
         });
 

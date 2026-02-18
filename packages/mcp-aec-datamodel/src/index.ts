@@ -1,9 +1,10 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+﻿import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerAccAuthTools } from "@tad/shared";
 
-import { registerAecHubs } from "./tools/aec.get.hubs.js";
 import { registerAecProjects } from "./tools/aec.get.projects.js";
+import { registerAecModels } from "./tools/aec.get.models.js";
+import { registerAecElementsByModel } from "./tools/aec.get.elements.by.model.js";
 import { registerAecElementsByProject } from "./tools/aec.get.elements.by.project.js";
 import { registerAecQuantities } from "./tools/aec.get.quantities.js";
 
@@ -14,8 +15,9 @@ const server = new McpServer({
 
 registerAccAuthTools(server);
 
-registerAecHubs(server);
 registerAecProjects(server);
+registerAecModels(server);
+registerAecElementsByModel(server);
 registerAecElementsByProject(server);
 registerAecQuantities(server);
 

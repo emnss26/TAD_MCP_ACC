@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+﻿import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   buildMcpResponse,
   clampListLimit,
@@ -35,7 +35,7 @@ export function registerAecQuantities(server: McpServer) {
 
         const elements = await getAecElementsByProject(gqlProjectId, {
           filterQuery,
-          pageSize: limit,
+          
           cursor: args.cursor,
         });
 
