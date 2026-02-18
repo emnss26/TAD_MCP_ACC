@@ -1,5 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { stringifyMcpPayload } from "@tad/shared";
+import {
+  buildMcpResponse,
+  clampListLimit,
+  parseOffsetCursor,
+  stringifyMcpPayload
+} from "@tad/shared";
 import { AecElementQuerySchema } from "../schemas/aec.js";
 import {
   getAecElementsByProject,
@@ -21,19 +26,53 @@ export function registerAecQuantities(server: McpServer) {
           args.classicProjectId
         );
 
+        const limit = clampListLimit(args.limit ?? args.pageSize);
+        const offset = parseOffsetCursor(args.cursor) ?? 0;
+
         const filterQuery = args.category
           ? `property.name.category == '${args.category}'`
           : undefined;
 
         const elements = await getAecElementsByProject(gqlProjectId, {
           filterQuery,
+          pageSize: limit,
+          cursor: args.cursor,
+        });
+
+        const hasMore = elements.length === limit;
+        const payload = buildMcpResponse({
+          results: elements,
+          pagination: {
+            limit,
+            offset,
+            totalResults: elements.length,
+            returned: elements.length,
+            hasMore,
+            nextOffset: hasMore ? offset + elements.length : null
+          },
+          meta: {
+            tool: "aec_get_quantities",
+            generatedAt: new Date().toISOString(),
+            source: "aec/graphql/elementsByProject",
+            options: {
+              classicHubId: args.classicHubId,
+              classicProjectId: args.classicProjectId,
+              gqlProjectId,
+              category: args.category,
+              limit,
+              offset,
+              cursor: args.cursor,
+              view: args.view,
+              outputFields: args.outputFields
+            }
+          }
         });
 
         return {
           content: [
             {
               type: "text",
-              text: stringifyMcpPayload(elements),
+              text: stringifyMcpPayload(payload),
             },
           ],
         };

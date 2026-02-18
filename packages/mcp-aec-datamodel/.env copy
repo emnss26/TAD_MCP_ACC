@@ -1,0 +1,7 @@
+APS_CLIENT_ID=LTsySfBwA6XrxK6PlxS9mIxVdy77Nu7Tx1hpDjMptXGb3iDB
+APS_CLIENT_SECRET=0DcPh6mojapfacv65ixsZKMFxHO0nUrSk0Kvxdbm2LJAF1MO1GHvQjVcGMp0145l
+APS_CALLBACK_URL=http://localhost:8787/callback
+APS_SCOPES='data:read data:write data:create account:read viewables:read bucket:read'
+
+APS_HUB_ID="0b8ddfd1-131f-4b5c-964f-6d9a316b7d11"
+APS_HUB_AEC_ID=urn:adsk.ace:prod.scope:1f36a462-b349-4443-b667-23dd02460a04

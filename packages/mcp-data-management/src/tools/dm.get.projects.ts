@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { buildMcpResponse,
+  parseOffsetCursor,
   stringifyMcpPayload
 } from "@tad/shared";
 import { HubIdSchema } from "../schemas/dm.js";
@@ -25,10 +26,10 @@ export function registerGetProjects(server: McpServer) {
       if (!hubId) throw new Error("Falta APS_HUB_ID en las variables de entorno.");
 
       const projects = await getHubProjects(hubId);
-      const start = args.offset ?? 0;
-      const end = typeof args.limit === "number" ? start + args.limit : undefined;
+      const start = parseOffsetCursor(args.cursor) ?? args.offset ?? 0;
+      const end = start + args.limit;
       const page = projects.slice(start, end);
-      const hasMore = typeof end === "number" ? end < projects.length : false;
+      const hasMore = end < projects.length;
 
       const results = page.map((project: any) => ({
         id: project.id,
@@ -56,7 +57,7 @@ export function registerGetProjects(server: McpServer) {
         results,
         pagination: {
           offset: start,
-          ...(typeof args.limit === "number" ? { limit: args.limit } : {}),
+          limit: args.limit,
           totalResults: projects.length,
           returned: results.length,
           hasMore,
@@ -66,7 +67,14 @@ export function registerGetProjects(server: McpServer) {
           tool: "dm_get_projects",
           generatedAt: new Date().toISOString(),
           source: "project.v1/hubs/:hubId/projects",
-          hubId
+          hubId,
+          options: {
+            limit: args.limit,
+            offset: start,
+            cursor: args.cursor,
+            view: args.view,
+            outputFields: args.outputFields
+          }
         },
         warnings
       });

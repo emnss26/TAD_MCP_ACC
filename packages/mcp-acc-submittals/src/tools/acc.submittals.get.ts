@@ -6,6 +6,7 @@ import {
   resolveProject,
   normalizeProjectIdForConstruction,
   buildMcpResponse,
+  parseOffsetCursor,
   type PaginatedResponse,
   type ResolveProjectResult,
   stringifyMcpPayload
@@ -50,11 +51,11 @@ const Input = z.object({
     .describe("Nombre del proyecto para resolver el projectId usando el hub."),
   includeContext: z
     .boolean()
-    .default(true)
+    .default(false)
     .describe("Incluye usuarios, companias, item types, responses y specs."),
   includeDictionaries: z
     .boolean()
-    .default(true)
+    .default(false)
     .describe("Incluye diccionarios por ID para facilitar el mapeo."),
   ...SubmittalsPaginationSchema
 });
@@ -270,6 +271,8 @@ export function registerAccSubmittalsList(server: McpServer) {
     },
     async (args: InputArgs) => {
       const token = await getAccAccessToken();
+      const offset = parseOffsetCursor(args.cursor) ?? args.offset;
+      const fetchAll = args.view === "full" ? args.fetchAll : false;
 
       const resolvedProject = await resolveProject({
         projectId: args.projectId,
@@ -289,9 +292,9 @@ export function registerAccSubmittalsList(server: McpServer) {
       };
 
       const page = await fetchAllPages<SubmittalListPage, SubmittalResult>({
-        fetchAll: args.fetchAll,
+        fetchAll,
         limit: args.limit,
-        offset: args.offset,
+        offset,
         maxPages: args.maxPages,
         maxItems: args.maxItems,
         fetchPage: async ({ limit, offset }) =>
@@ -345,7 +348,7 @@ export function registerAccSubmittalsList(server: McpServer) {
               ? (page.pagination as Record<string, unknown>)
               : {
                   limit: args.limit,
-                  offset: args.offset,
+                  offset,
                   totalResults: enrichedResults.length,
                   returned: enrichedResults.length,
                   hasMore: false,
@@ -357,9 +360,12 @@ export function registerAccSubmittalsList(server: McpServer) {
             source: "construction/submittals/v2/projects/:projectId/items",
             projectResolution: project,
             options: {
-              fetchAll: args.fetchAll,
+              fetchAll,
               limit: args.limit,
-              offset: args.offset,
+              offset,
+              cursor: args.cursor,
+              view: args.view,
+              outputFields: args.outputFields,
               maxPages: args.maxPages,
               maxItems: args.maxItems,
               includeContext: args.includeContext,

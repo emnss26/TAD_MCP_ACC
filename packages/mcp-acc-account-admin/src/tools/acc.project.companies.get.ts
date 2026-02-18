@@ -6,6 +6,7 @@ import {
   resolveProject,
   normalizeProjectIdForConstruction,
   buildMcpResponse,
+  parseOffsetCursor,
   type PaginatedResponse,
   stringifyMcpPayload
 } from "@tad/shared";
@@ -66,6 +67,8 @@ export function registerAccProjectCompaniesGet(server: McpServer) {
     },
     async (args: InputArgs) => {
       const token = await getAccAccessToken();
+      const offset = parseOffsetCursor(args.cursor) ?? args.offset;
+      const fetchAll = args.view === "full" ? args.fetchAll : false;
       const account = resolveAccountId({
         accountId: args.accountId,
         hubId: args.hubId
@@ -80,9 +83,9 @@ export function registerAccProjectCompaniesGet(server: McpServer) {
       });
 
       const data = await fetchAllPages<ProjectCompanyPage, ProjectCompanyResult>({
-        fetchAll: args.fetchAll,
+        fetchAll,
         limit: args.limit,
-        offset: args.offset,
+        offset,
         maxPages: args.maxPages,
         maxItems: args.maxItems,
         fetchPage: async ({ limit, offset }) =>
@@ -121,7 +124,7 @@ export function registerAccProjectCompaniesGet(server: McpServer) {
               ? (data.pagination as Record<string, unknown>)
               : {
                   limit: args.limit,
-                  offset: args.offset,
+                  offset,
                   totalResults: Array.isArray(data.results) ? data.results.length : 0,
                   returned: Array.isArray(data.results) ? data.results.length : 0,
                   hasMore: false,
@@ -141,9 +144,12 @@ export function registerAccProjectCompaniesGet(server: McpServer) {
               accountAdminProjectId: resolvedProject.projectId
             },
             options: {
-              fetchAll: args.fetchAll,
+              fetchAll,
               limit: args.limit,
-              offset: args.offset,
+              offset,
+              cursor: args.cursor,
+              view: args.view,
+              outputFields: args.outputFields,
               maxPages: args.maxPages,
               maxItems: args.maxItems,
               region: args.region,

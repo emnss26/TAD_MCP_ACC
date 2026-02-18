@@ -1,5 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { stringifyMcpPayload } from "@tad/shared";
+import {
+  buildMcpResponse,
+  clampListLimit,
+  parseOffsetCursor,
+  stringifyMcpPayload
+} from "@tad/shared";
 import { AecElementsByProjectQuerySchema } from "../schemas/aec.js";
 import { getAecElementsByProject } from "../aec/aec.client.js";
 
@@ -19,17 +24,47 @@ export function registerAecElementsByProject(server: McpServer) {
           throw new Error("projectId es requerido.");
         }
 
+        const limit = clampListLimit(args.limit ?? args.pageSize);
+        const offset = parseOffsetCursor(args.cursor) ?? 0;
+
         const elements = await getAecElementsByProject(projectId, {
           filterQuery: args.filterQuery,
-          pageSize: args.pageSize,
+          pageSize: limit,
           cursor: args.cursor,
+        });
+
+        const hasMore = elements.length === limit;
+        const payload = buildMcpResponse({
+          results: elements,
+          pagination: {
+            limit,
+            offset,
+            totalResults: elements.length,
+            returned: elements.length,
+            hasMore,
+            nextOffset: hasMore ? offset + elements.length : null
+          },
+          meta: {
+            tool: "aec_get_elements_by_project",
+            generatedAt: new Date().toISOString(),
+            source: "aec/graphql/elementsByProject",
+            options: {
+              projectId,
+              limit,
+              offset,
+              cursor: args.cursor,
+              view: args.view,
+              outputFields: args.outputFields,
+              filterQuery: args.filterQuery
+            }
+          }
         });
 
         return {
           content: [
             {
               type: "text",
-              text: stringifyMcpPayload(elements),
+              text: stringifyMcpPayload(payload),
             },
           ],
         };

@@ -6,6 +6,7 @@ import {
   resolveProject,
   normalizeProjectIdForConstruction,
   buildMcpResponse,
+  parseOffsetCursor,
   type PaginatedResponse,
   type ResolveProjectResult,
   stringifyMcpPayload
@@ -102,6 +103,8 @@ export function registerAccTransmittalsList(server: McpServer) {
     },
     async (args: InputArgs) => {
       const token = await getAccAccessToken();
+      const offset = parseOffsetCursor(args.cursor) ?? args.offset;
+      const fetchAll = args.view === "full" ? args.fetchAll : false;
 
       const resolvedProject = await resolveProject({
         projectId: args.projectId,
@@ -121,9 +124,9 @@ export function registerAccTransmittalsList(server: McpServer) {
       };
 
       const data = await fetchAllPages<TransmittalListPage>({
-        fetchAll: args.fetchAll,
+        fetchAll,
         limit: args.limit,
-        offset: args.offset,
+        offset,
         maxPages: args.maxPages,
         maxItems: args.maxItems,
         fetchPage: async ({ limit, offset }) =>
@@ -154,7 +157,7 @@ export function registerAccTransmittalsList(server: McpServer) {
               ? (data.pagination as Record<string, unknown>)
               : {
                   limit: args.limit,
-                  offset: args.offset,
+                  offset,
                   totalResults: Array.isArray(data.results) ? data.results.length : 0,
                   returned: Array.isArray(data.results) ? data.results.length : 0,
                   hasMore: false,
@@ -166,9 +169,12 @@ export function registerAccTransmittalsList(server: McpServer) {
             source: "construction/transmittals/v1/projects/:projectId/transmittals",
             projectResolution: project,
             options: {
-              fetchAll: args.fetchAll,
+              fetchAll,
               limit: args.limit,
-              offset: args.offset,
+              offset,
+              cursor: args.cursor,
+              view: args.view,
+              outputFields: args.outputFields,
               maxPages: args.maxPages,
               maxItems: args.maxItems
             }

@@ -1,6 +1,12 @@
 import { getAccAccessToken, queryAecDataModel } from "@tad/shared";
 
 type AecEntity = { id: string; name: string };
+type AecProjectAlternativeIdentifiers = {
+  dataManagementAPIProjectId?: string | null;
+};
+export type AecProject = AecEntity & {
+  alternativeIdentifiers?: AecProjectAlternativeIdentifiers | null;
+};
 type AecProperty = {
   name: string;
   value?: string | null;
@@ -20,7 +26,7 @@ export type AecHubsResponse = {
 };
 
 export type AecProjectsResponse = {
-  projects: { results: AecEntity[] };
+  projects: { results: AecProject[] };
 };
 
 export type AecElementsByProjectResponse = {
@@ -44,6 +50,9 @@ export const GET_PROJECTS_QUERY = `
       results {
         id
         name
+        alternativeIdentifiers {
+          dataManagementAPIProjectId
+        }
       }
     }
   }
@@ -69,6 +78,32 @@ export const GET_ELEMENTS_BY_PROJECT_QUERY = `
 `;
 
 export const GET_ELEMENT_DETAILS_QUERY = GET_ELEMENTS_BY_PROJECT_QUERY;
+
+export function getConfiguredAecHubId(): string | null {
+  const aecHubId = process.env.APS_HUB_AEC_ID?.trim();
+  if (aecHubId) {
+    return aecHubId;
+  }
+
+  const defaultHubId = process.env.APS_HUB_ID?.trim();
+  return defaultHubId || null;
+}
+
+function resolveAecHubId(hubId?: string | null): string {
+  const inputHubId = hubId?.trim();
+  if (inputHubId) {
+    return inputHubId;
+  }
+
+  const envHubId = getConfiguredAecHubId();
+  if (envHubId) {
+    return envHubId;
+  }
+
+  throw new Error(
+    "hubId es requerido. Envia hubId o configura APS_HUB_AEC_ID (fallback: APS_HUB_ID)."
+  );
+}
 
 function buildFilter(filterQuery?: string): QueryFilter | undefined {
   const query = filterQuery?.trim();
@@ -116,14 +151,14 @@ export async function getAecHubs(params?: {
 }
 
 export async function getAecProjects(
-  hubId: string,
+  hubId?: string | null,
   params?: {
     filterQuery?: string;
     pageSize?: number;
     cursor?: string;
   }
-): Promise<AecEntity[]> {
-  const trimmedHubId = hubId.trim();
+): Promise<AecProject[]> {
+  const trimmedHubId = resolveAecHubId(hubId);
   const finalHubId = trimmedHubId.startsWith("b.")
     ? await getGraphQLHubId(trimmedHubId)
     : trimmedHubId;
@@ -257,7 +292,7 @@ export async function getGraphQLHubId(classicHubId: string): Promise<string> {
 }
 
 export async function getGraphQLProjectId(
-  classicHubId: string,
+  classicHubId: string | null | undefined,
   projectId: string
 ): Promise<string> {
   const trimmedProjectId = projectId.trim();
@@ -265,18 +300,27 @@ export async function getGraphQLProjectId(
     return trimmedProjectId;
   }
 
-  const trimmedHubId = classicHubId.trim();
+  const trimmedHubId = resolveAecHubId(classicHubId);
   if (!trimmedHubId.startsWith("b.")) {
     throw new Error(
-      "Para convertir projectId b.xxx se requiere hubId b.xxx de Data Management."
+      "Para convertir projectId b.xxx se requiere hubId b.xxx (input o APS_HUB_AEC_ID)."
     );
   }
 
-  const projectName = await getDataManagementProjectName(
-    trimmedHubId,
-    trimmedProjectId
-  );
   const projects = await getAecProjects(trimmedHubId);
+  const normalizedClassicProjectId = trimmedProjectId.toLowerCase();
+  const matchByAlternativeId = projects.find(
+    (project) =>
+      project.alternativeIdentifiers?.dataManagementAPIProjectId
+        ?.trim()
+        .toLowerCase() === normalizedClassicProjectId
+  );
+
+  if (matchByAlternativeId) {
+    return matchByAlternativeId.id;
+  }
+
+  const projectName = await getDataManagementProjectName(trimmedHubId, trimmedProjectId);
   const matches = projects.filter(
     (project) => project.name.trim().toLowerCase() === projectName.toLowerCase()
   );

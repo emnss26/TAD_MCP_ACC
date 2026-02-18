@@ -4,6 +4,7 @@ import {
   getAccAccessToken,
   fetchAllPages,
   buildMcpResponse,
+  parseOffsetCursor,
   type PaginatedResponse,
   stringifyMcpPayload
 } from "@tad/shared";
@@ -73,15 +74,17 @@ export function registerAccCompaniesGet(server: McpServer) {
     },
     async (args: InputArgs) => {
       const token = await getAccAccessToken();
+      const offset = parseOffsetCursor(args.cursor) ?? args.offset;
+      const fetchAll = args.view === "full" ? args.fetchAll : false;
       const account = resolveAccountId({
         accountId: args.accountId,
         hubId: args.hubId
       });
 
       const data = await fetchAllPages<CompanyPage, CompanyResult>({
-        fetchAll: args.fetchAll,
+        fetchAll,
         limit: args.limit,
-        offset: args.offset,
+        offset,
         maxPages: args.maxPages,
         maxItems: args.maxItems,
         fetchPage: async ({ limit, offset }) =>
@@ -123,7 +126,7 @@ export function registerAccCompaniesGet(server: McpServer) {
               ? (data.pagination as Record<string, unknown>)
               : {
                   limit: args.limit,
-                  offset: args.offset,
+                  offset,
                   totalResults: Array.isArray(data.results) ? data.results.length : 0,
                   returned: Array.isArray(data.results) ? data.results.length : 0,
                   hasMore: false,
@@ -135,9 +138,12 @@ export function registerAccCompaniesGet(server: McpServer) {
             source: "construction/admin/v1/accounts/:accountId/companies",
             accountResolution: account,
             options: {
-              fetchAll: args.fetchAll,
+              fetchAll,
               limit: args.limit,
-              offset: args.offset,
+              offset,
+              cursor: args.cursor,
+              view: args.view,
+              outputFields: args.outputFields,
               maxPages: args.maxPages,
               maxItems: args.maxItems,
               region: args.region,

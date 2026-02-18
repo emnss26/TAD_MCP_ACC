@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildMcpResponse,
+  parseOffsetCursor,
   stringifyMcpPayload
 } from "@tad/shared";
 import { ItemVersionsSchema } from "../schemas/dm.js";
@@ -30,26 +31,38 @@ export function registerGetItemVersions(server: McpServer) {
     async (args) => {
       const raw = await getItemVersions(args.projectId, args.itemId);
       const data = Array.isArray(raw?.data) ? raw.data : [];
-      const results = data.map(toVersion);
+      const allResults = data.map(toVersion);
+      const offset = parseOffsetCursor(args.cursor) ?? args.offset ?? 0;
+      const end = offset + args.limit;
+      const results = allResults.slice(offset, end);
+      const hasMore = end < allResults.length;
 
       const payload = buildMcpResponse({
         results,
         pagination: {
-          totalResults: results.length,
+          limit: args.limit,
+          offset,
+          totalResults: allResults.length,
           returned: results.length,
-          offset: 0,
-          hasMore: false,
-          nextOffset: null
+          hasMore,
+          nextOffset: hasMore ? end : null
         },
         meta: {
           tool: "dm_get_versions",
           generatedAt: new Date().toISOString(),
           source: "data.v1/projects/:projectId/items/:itemId/versions",
           projectId: args.projectId,
-          itemId: args.itemId
+          itemId: args.itemId,
+          options: {
+            limit: args.limit,
+            offset,
+            cursor: args.cursor,
+            view: args.view,
+            outputFields: args.outputFields
+          }
         },
         warnings:
-          results.length === 0
+          allResults.length === 0
             ? [
                 {
                   code: "no_versions",
