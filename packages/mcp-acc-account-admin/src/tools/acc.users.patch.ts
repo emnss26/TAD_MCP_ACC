@@ -22,11 +22,14 @@ function compactObject<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
-export function registerAccUsersPatch(server: McpServer) {
+function registerUsersPatchTool(
+  server: McpServer,
+  toolName: "acc_users_patch" | "acc_account_users_patch"
+) {
   server.registerTool(
-    "acc_users_patch",
+    toolName,
     {
-      title: "ACC Users.Patch",
+      title: "ACC Account.Users.Patch",
       description:
         "Actualiza status/company de un usuario en Account Admin (requiere confirm=true como doble check).",
       inputSchema: UsersPatchInputSchema.shape
@@ -44,7 +47,7 @@ export function registerAccUsersPatch(server: McpServer) {
 
       if (!args.confirm) {
         const preview = finalizePayload(
-          "acc_users_patch",
+          toolName,
           buildMcpResponse({
             results: [
               {
@@ -64,7 +67,7 @@ export function registerAccUsersPatch(server: McpServer) {
               nextOffset: null
             },
             meta: {
-              tool: "acc_users_patch",
+              tool: toolName,
               generatedAt: new Date().toISOString(),
               source: "hq/v1/accounts/:account_id/users/:user_id",
               accountResolution: account,
@@ -75,7 +78,7 @@ export function registerAccUsersPatch(server: McpServer) {
                 code: "confirmation_required",
                 message:
                   "Cambio sensible no ejecutado. Repite la llamada con confirm=true para aplicar el PATCH.",
-                source: "acc_users_patch"
+                source: toolName
               }
             ]
           }) as Record<string, unknown>
@@ -96,7 +99,7 @@ export function registerAccUsersPatch(server: McpServer) {
       });
 
       const payload = finalizePayload(
-        "acc_users_patch",
+        toolName,
         buildMcpResponse({
           results: [updated as Record<string, unknown>],
           pagination: {
@@ -107,7 +110,7 @@ export function registerAccUsersPatch(server: McpServer) {
             nextOffset: null
           },
           meta: {
-            tool: "acc_users_patch",
+            tool: toolName,
             generatedAt: new Date().toISOString(),
             source: "hq/v1/accounts/:account_id/users/:user_id",
             accountResolution: account
@@ -118,4 +121,9 @@ export function registerAccUsersPatch(server: McpServer) {
       return { content: [{ type: "text", text: stringifyMcpPayload(payload) }] };
     }
   );
+}
+
+export function registerAccUsersPatch(server: McpServer) {
+  registerUsersPatchTool(server, "acc_users_patch");
+  registerUsersPatchTool(server, "acc_account_users_patch");
 }

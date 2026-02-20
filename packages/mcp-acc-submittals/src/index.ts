@@ -4,6 +4,7 @@ import { registerAccAuthTools } from "@tad/shared";
 
 import { registerAccSubmittalsList } from "./tools/acc.submittals.get.js";
 import { registerAccSubmittalsTransition } from "./tools/acc.submittals.transition.js";
+import { registerAccSubmittalsCreate } from "./tools/acc.submittals.create.js";
 
 const server = new McpServer({
   name: "mcp-acc-submittals",
@@ -13,6 +14,7 @@ const server = new McpServer({
 registerAccAuthTools(server);
 registerAccSubmittalsList(server);
 registerAccSubmittalsTransition(server);
+registerAccSubmittalsCreate(server);
 
 async function main() {
   const transport = new StdioServerTransport();

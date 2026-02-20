@@ -44,6 +44,28 @@ type PatchUserParams = {
   region?: string;
 };
 
+type CreateAccountUserParams = {
+  token: string;
+  accountId: string;
+  payload: Record<string, unknown>;
+  region?: string;
+};
+
+type CreateProjectUserParams = {
+  token: string;
+  projectId: string;
+  payload: Record<string, unknown>;
+  region?: string;
+};
+
+type PatchProjectUserParams = {
+  token: string;
+  projectId: string;
+  userId: string;
+  payload: Record<string, unknown>;
+  region?: string;
+};
+
 function appendQuery(
   url: URL,
   params: Record<string, QueryValue> = {}
@@ -147,4 +169,40 @@ export async function patchUserDetails(params: PatchUserParams) {
     body: payload,
     serviceName: "accountAdmin.patchUserDetails"
   });
+}
+
+export async function createAccountUser(params: CreateAccountUserParams) {
+  const { token, accountId, payload, region } = params;
+  return fetchApsJson(`${HQ_BASE_URL}/accounts/${accountId}/users`, {
+    method: "POST",
+    token,
+    headers: buildHeaders(region),
+    body: payload,
+    serviceName: "accountAdmin.createAccountUser"
+  });
+}
+
+export async function createProjectUser(params: CreateProjectUserParams) {
+  const { token, projectId, payload, region } = params;
+  return fetchApsJson(`${CONSTRUCTION_ADMIN_BASE_URL}/projects/${projectId}/users`, {
+    method: "POST",
+    token,
+    headers: buildHeaders(region),
+    body: payload,
+    serviceName: "accountAdmin.createProjectUser"
+  });
+}
+
+export async function patchProjectUser(params: PatchProjectUserParams) {
+  const { token, projectId, userId, payload, region } = params;
+  return fetchApsJson(
+    `${CONSTRUCTION_ADMIN_BASE_URL}/projects/${projectId}/users/${userId}`,
+    {
+      method: "PATCH",
+      token,
+      headers: buildHeaders(region),
+      body: payload,
+      serviceName: "accountAdmin.patchProjectUser"
+    }
+  );
 }

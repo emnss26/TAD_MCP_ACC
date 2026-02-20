@@ -159,3 +159,28 @@ export const TransitionSubmittalInputSchema = z
     message: "Debes enviar projectId o projectName para identificar el proyecto.",
     path: ["projectId"]
   });
+
+export const CreateSubmittalInputSchema = z
+  .object({
+    hubId: z
+      .string()
+      .optional()
+      .describe("Hub ID para resolver projectName. Si se omite, usa APS_HUB_ID."),
+    projectId: z
+      .string()
+      .min(3)
+      .optional()
+      .describe("Project ID directo (con o sin prefijo b.)."),
+    projectName: z
+      .string()
+      .min(2)
+      .optional()
+      .describe("Nombre del proyecto para resolver el projectId usando el hub."),
+    payload: z
+      .record(z.string(), z.unknown())
+      .describe("Payload exacto para POST /construction/submittals/v2/projects/:projectId/items.")
+  })
+  .refine((value) => Boolean(value.projectId || value.projectName), {
+    message: "Debes enviar projectId o projectName para identificar el proyecto.",
+    path: ["projectId"]
+  });

@@ -20,6 +20,10 @@ export {
   logoutAcc as accLogout,
   getAccAccessToken
 } from "./aps/accAuth.js";
+export {
+  getApsTwoLeggedToken,
+  clearApsTwoLeggedTokenCache
+} from "./aps/twoLeggedAuth.js";
 
 // Utilidades de almacenamiento
 export { readTokens, writeTokens, clearTokens } from "./aps/tokenStore.js";
@@ -65,6 +69,11 @@ export {
   getResultHandleItem,
   exportResultHandle
 } from "./schemas/mcpResponse.js";
+export {
+  PaginationSchema,
+  createOffsetPaginationInputSchema,
+  type OffsetPaginationInputSchemaOptions
+} from "./schemas/pagination.js";
 export {
   registerAccAuthStartTool,
   registerAccAuthStatusTool,

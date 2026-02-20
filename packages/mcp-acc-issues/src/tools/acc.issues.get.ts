@@ -12,10 +12,13 @@ import {
   stringifyMcpPayload
 } from "@tad/shared";
 import { listIssues } from "../acc/issues.client.js";
+import { getProjectUsers, getProjectCompanies } from "../acc/admin.client.js";
 import { IssuesPaginationSchema } from "../schemas/pagination.js";
 import { IssueListResponseSchema, IssueToolResponseSchema } from "../schemas/issues.js";
 
-type IssuesPage = PaginatedResponse<unknown> & {
+type IssueResult = Record<string, unknown>;
+
+type IssuesPage = PaginatedResponse<IssueResult> & {
   schemaWarning?: string;
 };
 
@@ -59,6 +62,118 @@ function parseIssuePage(raw: unknown): IssuesPage {
   return {
     results: [],
     schemaWarning: "La respuesta de Issues no tiene un formato JSON valido."
+  };
+}
+
+function getResultsArray(payload: unknown): Record<string, unknown>[] {
+  if (Array.isArray(payload)) {
+    return payload as Record<string, unknown>[];
+  }
+  if (payload && typeof payload === "object" && Array.isArray((payload as any).results)) {
+    return (payload as any).results;
+  }
+  return [];
+}
+
+function buildIdentityMap(items: Record<string, unknown>[], idKeys: string[]) {
+  const map: Record<string, Record<string, unknown>> = {};
+  for (const item of items) {
+    const id = idKeys
+      .map((key) => item[key])
+      .find((value) => typeof value === "string" && value.trim().length > 0);
+    if (typeof id === "string") {
+      map[id] = item;
+    }
+  }
+  return map;
+}
+
+function resolveIdentity(
+  id: unknown,
+  usersById: Record<string, Record<string, unknown>>,
+  companiesById: Record<string, Record<string, unknown>>
+) {
+  if (typeof id !== "string" || !id.trim()) return null;
+  return usersById[id] ?? companiesById[id] ?? { id, unresolved: true };
+}
+
+function enrichIssueResult(
+  issue: IssueResult,
+  usersById: Record<string, Record<string, unknown>>,
+  companiesById: Record<string, Record<string, unknown>>
+) {
+  const idFields = ["assignedTo", "ownerId", "openedBy", "closedBy", "createdBy", "updatedBy"] as const;
+  const resolvedActors: Record<string, unknown> = {};
+  for (const field of idFields) {
+    if (field in issue) {
+      resolvedActors[field] = resolveIdentity(issue[field], usersById, companiesById);
+    }
+  }
+
+  const resolvedWatchers = Array.isArray(issue.watchers)
+    ? issue.watchers.map((id) => resolveIdentity(id, usersById, companiesById))
+    : [];
+
+  const officialResponse =
+    issue.officialResponse && typeof issue.officialResponse === "object"
+      ? {
+          ...(issue.officialResponse as Record<string, unknown>),
+          resolvedRespondedBy: resolveIdentity(
+            (issue.officialResponse as Record<string, unknown>).respondedBy,
+            usersById,
+            companiesById
+          )
+        }
+      : null;
+
+  const resolvedLinkedDocuments = Array.isArray(issue.linkedDocuments)
+    ? issue.linkedDocuments.map((item) => {
+        if (!item || typeof item !== "object") return item;
+        const linked = item as Record<string, unknown>;
+        return {
+          ...linked,
+          resolvedCreatedBy: resolveIdentity(linked.createdBy, usersById, companiesById),
+          resolvedClosedBy: resolveIdentity(linked.closedBy, usersById, companiesById)
+        };
+      })
+    : [];
+
+  return {
+    ...issue,
+    resolvedActors,
+    resolvedWatchers,
+    ...(officialResponse ? { resolvedOfficialResponse: officialResponse } : {}),
+    ...(resolvedLinkedDocuments.length > 0
+      ? { resolvedLinkedDocuments }
+      : {})
+  };
+}
+
+async function fetchContext(projectId: string): Promise<{
+  warnings: string[];
+  usersById: Record<string, Record<string, unknown>>;
+  companiesById: Record<string, Record<string, unknown>>;
+}> {
+  const warnings: string[] = [];
+  const [usersRes, companiesRes] = await Promise.allSettled([
+    getProjectUsers(projectId),
+    getProjectCompanies(projectId)
+  ]);
+
+  const users = usersRes.status === "fulfilled" ? getResultsArray(usersRes.value) : [];
+  const companies = companiesRes.status === "fulfilled" ? getResultsArray(companiesRes.value) : [];
+
+  if (usersRes.status === "rejected") {
+    warnings.push(`No se pudieron obtener usuarios: ${String(usersRes.reason)}`);
+  }
+  if (companiesRes.status === "rejected") {
+    warnings.push(`No se pudieron obtener companias: ${String(companiesRes.reason)}`);
+  }
+
+  return {
+    warnings,
+    usersById: buildIdentityMap(users, ["autodeskId", "id"]),
+    companiesById: buildIdentityMap(companies, ["id"])
   };
 }
 
@@ -134,6 +249,13 @@ export function registerAccIssuesList(server: McpServer) {
           )
       });
 
+      const context = await fetchContext(project.issuesProjectId);
+
+      const rawResults = Array.isArray(data.results) ? data.results : [];
+      const enrichedResults = rawResults.map((issue) =>
+        enrichIssueResult(issue, context.usersById, context.companiesById)
+      );
+
       const warnings: Array<{ code: string; message: string; source: string }> = [];
       if (data.schemaWarning) {
         warnings.push({
@@ -142,18 +264,25 @@ export function registerAccIssuesList(server: McpServer) {
           source: "acc_issues_list"
         });
       }
+      for (const warning of context.warnings) {
+        warnings.push({
+          code: "context_fetch_warning",
+          message: warning,
+          source: "acc_issues_list"
+        });
+      }
 
       const payload = finalizePayload(
         buildMcpResponse({
-          results: Array.isArray(data.results) ? data.results : [],
+          results: enrichedResults,
           pagination:
             data.pagination && typeof data.pagination === "object"
               ? (data.pagination as Record<string, unknown>)
               : {
                   limit: args.limit,
                   offset,
-                  totalResults: Array.isArray(data.results) ? data.results.length : 0,
-                  returned: Array.isArray(data.results) ? data.results.length : 0,
+                  totalResults: enrichedResults.length,
+                  returned: enrichedResults.length,
                   hasMore: false,
                   nextOffset: null
                 },

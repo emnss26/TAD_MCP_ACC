@@ -1,4 +1,4 @@
-﻿import { getAccAccessToken, queryAecDataModel } from "@tad/shared";
+import { queryAecDataModel } from "@tad/shared";
 
 type AecEntity = { id: string; name: string };
 type AecProjectAlternativeIdentifiers = {
@@ -78,7 +78,7 @@ export type AecElementsByElementGroupResponse = {
   };
 };
 
-// ─── Queries ────────────────────────────────────────────────────────────────
+// --- Queries ----------------------------------------------------------------
 
 export const GET_PROJECTS_QUERY = `
   query GetProjects($hubId: ID!) {
@@ -210,7 +210,7 @@ export const GET_ELEMENT_GROUPS_BY_PROJECT_QUERY_PAGINATED = `
   }
 `;
 
-// ─── Hub ID helpers ──────────────────────────────────────────────────────────
+// --- Hub ID helpers ----------------------------------------------------------
 
 export function getConfiguredAecHubId(): string | null {
   const aecHubId = process.env.APS_HUB_AEC_ID?.trim();
@@ -221,17 +221,31 @@ export function getConfiguredAecHubId(): string | null {
 
 function resolveAecHubId(hubId?: string | null): string {
   const inputHubId = hubId?.trim();
-  if (inputHubId) return inputHubId;
+  if (inputHubId) {
+    if (!inputHubId.toLowerCase().startsWith("urn:")) {
+      throw new Error(
+        "hubId para AEC Data Model debe iniciar con 'urn:' (ej: urn:adsk.ace:...)."
+      );
+    }
+    return inputHubId;
+  }
 
   const envHubId = getConfiguredAecHubId();
-  if (envHubId) return envHubId;
+  if (envHubId) {
+    if (!envHubId.toLowerCase().startsWith("urn:")) {
+      throw new Error(
+        "APS_HUB_AEC_ID debe iniciar con 'urn:' (ej: urn:adsk.ace:...)."
+      );
+    }
+    return envHubId;
+  }
 
   throw new Error(
-    "hubId es requerido. Envia hubId o configura APS_HUB_AEC_ID (fallback: APS_HUB_ID)."
+    "hubId es requerido. Envia hubId o configura APS_HUB_AEC_ID con formato urn:."
   );
 }
 
-// ─── Core fetch ─────────────────────────────────────────────────────────────
+// --- Core fetch -------------------------------------------------------------
 
 export async function aecFetch<TData = unknown>(
   query: string,
@@ -246,7 +260,7 @@ export async function aecFetch<TData = unknown>(
   return response.data as TData;
 }
 
-// ─── Projects ────────────────────────────────────────────────────────────────
+// --- Projects ----------------------------------------------------------------
 
 export async function getAecProjects(
   hubId?: string | null,
@@ -254,11 +268,7 @@ export async function getAecProjects(
     cursor?: string;
   }
 ): Promise<AecProject[]> {
-  const trimmedHubId = resolveAecHubId(hubId);
-  // Si es b.xxx necesita conversión; si ya es el AEC ID va directo
-  const finalHubId = trimmedHubId.startsWith("b.")
-    ? await getGraphQLHubId(trimmedHubId)
-    : trimmedHubId;
+  const finalHubId = resolveAecHubId(hubId);
 
   const cursor = params?.cursor?.trim();
   const query = cursor ? GET_PROJECTS_QUERY_PAGINATED : GET_PROJECTS_QUERY;
@@ -270,7 +280,7 @@ export async function getAecProjects(
   return data?.projects?.results ?? [];
 }
 
-// ─── Elements by Element Group ───────────────────────────────────────────────
+// --- Elements by Element Group -----------------------------------------------
 
 export async function getAecElementsByElementGroup(
   elementGroupId: string,
@@ -307,7 +317,7 @@ export async function getAecElementsByElementGroup(
   return all;
 }
 
-// ─── Element Groups (Models) ─────────────────────────────────────────────────
+// --- Element Groups (Models) -------------------------------------------------
 
 export async function getAecElementGroupsByProject(
   projectId: string,
@@ -327,7 +337,7 @@ export async function getAecElementGroupsByProject(
   return data?.elementGroupsByProject?.results ?? [];
 }
 
-// ─── Elements ────────────────────────────────────────────────────────────────
+// --- Elements ----------------------------------------------------------------
 
 export async function getAecElementsByProject(
   projectId: string,
@@ -350,139 +360,4 @@ export async function getAecElementsByProject(
   return data?.elementsByProject?.results ?? [];
 }
 
-// ─── Hub resolution (solo para b.xxx) ───────────────────────────────────────
 
-async function getDataManagementHubName(hubId: string): Promise<string> {
-  const token = await getAccAccessToken();
-  const url = `https://developer.api.autodesk.com/project/v1/hubs/${encodeURIComponent(hubId)}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Data Management Error (${response.status}): ${body}`);
-  }
-
-  const json = (await response.json()) as any;
-  const name =
-    json?.data?.attributes?.name ??
-    json?.data?.attributes?.extension?.data?.name ??
-    json?.data?.name;
-
-  if (!name || !String(name).trim()) {
-    throw new Error(
-      `No se pudo leer el nombre del hub desde Data Management para: ${hubId}`
-    );
-  }
-
-  return String(name).trim();
-}
-
-async function getDataManagementProjectName(
-  classicHubId: string,
-  classicProjectId: string
-): Promise<string> {
-  const token = await getAccAccessToken();
-  const url = `https://developer.api.autodesk.com/project/v1/hubs/${encodeURIComponent(
-    classicHubId
-  )}/projects/${encodeURIComponent(classicProjectId)}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Data Management Error (${response.status}): ${body}`);
-  }
-
-  const json = (await response.json()) as any;
-  const name =
-    json?.data?.attributes?.name ??
-    json?.data?.attributes?.extension?.data?.name ??
-    json?.data?.name;
-
-  if (!name || !String(name).trim()) {
-    throw new Error(
-      `No se pudo leer el nombre del proyecto desde Data Management para: ${classicProjectId}`
-    );
-  }
-
-  return String(name).trim();
-}
-
-export async function getGraphQLHubId(classicHubId: string): Promise<string> {
-  const dmName = await getDataManagementHubName(classicHubId);
-
-  // Busca el hub AEC por nombre usando la query de proyectos del AEC
-  // (el API AEC no tiene query de hubs, se resuelve por nombre)
-  throw new Error(
-    `El hub '${classicHubId}' es un hubId de Data Management (b.xxx). ` +
-    `Configura APS_HUB_AEC_ID con el hubId GraphQL de AEC directamente (urn:adsk.ace:...).`
-  );
-}
-
-export async function getGraphQLProjectId(
-  classicHubId: string | null | undefined,
-  projectId: string
-): Promise<string> {
-  const trimmedProjectId = projectId.trim();
-  if (!trimmedProjectId.startsWith("b.")) {
-    return trimmedProjectId;
-  }
-
-  const trimmedHubId = resolveAecHubId(classicHubId);
-  if (!trimmedHubId.startsWith("b.")) {
-    throw new Error(
-      "Para convertir projectId b.xxx se requiere hubId b.xxx (input o APS_HUB_AEC_ID)."
-    );
-  }
-
-  const projects = await getAecProjects(trimmedHubId);
-  const normalizedClassicProjectId = trimmedProjectId.toLowerCase();
-  const matchByAlternativeId = projects.find(
-    (project) =>
-      project.alternativeIdentifiers?.dataManagementAPIProjectId
-        ?.trim()
-        .toLowerCase() === normalizedClassicProjectId
-  );
-
-  if (matchByAlternativeId) {
-    return matchByAlternativeId.id;
-  }
-
-  const projectName = await getDataManagementProjectName(trimmedHubId, trimmedProjectId);
-  const matches = projects.filter(
-    (project) => project.name.trim().toLowerCase() === projectName.toLowerCase()
-  );
-
-  if (matches.length === 1) {
-    return matches[0].id;
-  }
-
-  if (matches.length === 0) {
-    const sample = projects
-      .slice(0, 20)
-      .map((project) => `- ${project.name} -> ${project.id}`)
-      .join("\n");
-
-    throw new Error(
-      `No se encontro el proyecto '${projectName}' en AEC Data Model.\n` +
-        `Proyectos visibles:\n${sample}`
-    );
-  }
-
-  throw new Error(
-    `Se encontraron ${matches.length} proyectos con el nombre '${projectName}'. Usa el projectId GraphQL directamente.`
-  );
-}

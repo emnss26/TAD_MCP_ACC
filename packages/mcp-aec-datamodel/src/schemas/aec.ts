@@ -20,7 +20,9 @@ export const AecProjectsQuerySchema = z.object({
   hubId: z
     .string()
     .optional()
-    .describe("ID del Hub (b.xxx Data Management o ID GraphQL AEC). Si se omite, usa APS_HUB_AEC_ID (o APS_HUB_ID)."),
+    .describe(
+      "ID del Hub AEC GraphQL en formato urn:... Si se omite, usa APS_HUB_AEC_ID."
+    ),
   filterQuery: z
     .string()
     .optional()
@@ -40,13 +42,9 @@ export const AecElementsByProjectQuerySchema = z.object({
 
 export const AecProjectSchema = AecProjectsQuerySchema;
 export const AecElementQuerySchema = z.object({
-  classicHubId: z
+  projectId: z
     .string()
-    .optional()
-    .describe("Hub ID en formato Data Management (b.xxx). Si se omite, usa APS_HUB_AEC_ID (o APS_HUB_ID)."),
-  classicProjectId: z
-    .string()
-    .describe("Project ID Data Management (b.xxx) o ID GraphQL"),
+    .describe("Project ID de AEC GraphQL (urn:...)."),
   category: z.string().optional().describe("Ejemplo: Revit Walls"),
   pageSize: z.number().int().positive().max(50).optional(),
   cursor: z.string().optional(),

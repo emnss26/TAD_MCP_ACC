@@ -7,8 +7,7 @@ import {
 } from "@tad/shared";
 import { AecElementQuerySchema } from "../schemas/aec.js";
 import {
-  getAecElementsByProject,
-  getGraphQLProjectId,
+  getAecElementsByProject
 } from "../aec/aec.client.js";
 
 export function registerAecQuantities(server: McpServer) {
@@ -21,10 +20,10 @@ export function registerAecQuantities(server: McpServer) {
     },
     async (args) => {
       try {
-        const gqlProjectId = await getGraphQLProjectId(
-          args.classicHubId,
-          args.classicProjectId
-        );
+        const gqlProjectId = String(args.projectId ?? "").trim();
+        if (!gqlProjectId) {
+          throw new Error("projectId es requerido.");
+        }
 
         const limit = clampListLimit(args.limit ?? args.pageSize);
         const offset = parseOffsetCursor(args.cursor) ?? 0;
@@ -55,8 +54,7 @@ export function registerAecQuantities(server: McpServer) {
             generatedAt: new Date().toISOString(),
             source: "aec/graphql/elementsByProject",
             options: {
-              classicHubId: args.classicHubId,
-              classicProjectId: args.classicProjectId,
+              projectId: gqlProjectId,
               gqlProjectId,
               category: args.category,
               limit,

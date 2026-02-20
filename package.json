@@ -3,17 +3,22 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "npm run build -w packages/shared && npm run build -w packages/mcp-acc-issues && npm run build -w packages/mcp-acc-rfis && npm run build -w packages/mcp-acc-submittals && npm run build -w packages/mcp-acc-assets && npm run build -w packages/mcp-acc-transmittals && npm run build -w packages/mcp-acc-account-admin && npm run build -w packages/mcp-acc-files && npm run build -w packages/mcp-data-management && npm run build -w packages/mcp-aec-datamodel",
+    "build": "npm run build -w packages/shared && npm run build -w packages/mcp-acc-issues && npm run build -w packages/mcp-bim360-issues && npm run build -w packages/mcp-acc-rfis && npm run build -w packages/mcp-bim360-rfis && npm run build -w packages/mcp-acc-submittals && npm run build -w packages/mcp-acc-assets && npm run build -w packages/mcp-acc-transmittals && npm run build -w packages/mcp-acc-account-admin && npm run build -w packages/mcp-bim360-account-admin && npm run build -w packages/mcp-acc-files && npm run build -w packages/mcp-acc-sheets && npm run build -w packages/mcp-data-management && npm run build -w packages/mcp-aec-datamodel && npm run build -w packages/mcp-aps-viewer-app",
     "typecheck": "npm run typecheck --workspaces",
     "dev:issues": "npm run dev -w packages/mcp-acc-issues",
+    "dev:bim360-issues": "npm run dev -w packages/mcp-bim360-issues",
     "dev:rfis": "npm run dev -w packages/mcp-acc-rfis",
+    "dev:bim360-rfis": "npm run dev -w packages/mcp-bim360-rfis",
     "dev:submittals": "npm run dev -w packages/mcp-acc-submittals",
     "dev:assets": "npm run dev -w packages/mcp-acc-assets",
     "dev:transmittals": "npm run dev -w packages/mcp-acc-transmittals",
     "dev:account-admin": "npm run dev -w packages/mcp-acc-account-admin",
+    "dev:bim360-account-admin": "npm run dev -w packages/mcp-bim360-account-admin",
     "dev:files": "npm run dev -w packages/mcp-acc-files",
+    "dev:sheets": "npm run dev -w packages/mcp-acc-sheets",
     "dev:dm": "npm run dev -w packages/mcp-data-management",
-    "dev:aec": "npm run dev -w packages/mcp-aec-datamodel"
+    "dev:aec": "npm run dev -w packages/mcp-aec-datamodel",
+    "dev:viewer-app": "npm run dev -w packages/mcp-aps-viewer-app"
   },
   "keywords": [],
   "author": "",
@@ -24,14 +29,19 @@
   "workspaces": [
     "packages/shared",
     "packages/mcp-acc-issues",
+    "packages/mcp-bim360-issues",
     "packages/mcp-acc-rfis",
+    "packages/mcp-bim360-rfis",
     "packages/mcp-acc-submittals",
     "packages/mcp-acc-assets",
     "packages/mcp-acc-transmittals",
     "packages/mcp-acc-account-admin",
+    "packages/mcp-bim360-account-admin",
     "packages/mcp-acc-files",
+    "packages/mcp-acc-sheets",
     "packages/mcp-data-management",
-    "packages/mcp-aec-datamodel"
+    "packages/mcp-aec-datamodel",
+    "packages/mcp-aps-viewer-app"
   ],
   "devDependencies": {
     "@types/node": "^25.2.3",

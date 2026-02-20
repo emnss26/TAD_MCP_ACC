@@ -170,3 +170,80 @@ export const UsersPatchInputSchema = z.object({
     .default(false)
     .describe("Debe ser true para ejecutar el PATCH real.")
 });
+
+export const AccountUsersCreateInputSchema = z.object({
+  accountId: z
+    .string()
+    .optional()
+    .describe("Account ID directo (con o sin prefijo b.)."),
+  hubId: z
+    .string()
+    .optional()
+    .describe("Hub ID para derivar accountId (removiendo prefijo b.)."),
+  region: z
+    .enum(["US", "EMEA", "AUS", "CAN", "DEU", "IND", "JPN", "GBR"])
+    .optional()
+    .describe("Region opcional para enrutar la peticion."),
+  payload: z
+    .record(z.string(), z.unknown())
+    .describe("Payload exacto para crear el usuario en HQ.")
+});
+
+export const ProjectUsersCreateInputSchema = z
+  .object({
+    hubId: z
+      .string()
+      .optional()
+      .describe("Hub ID para resolver projectName. Si se omite, usa APS_HUB_ID."),
+    projectId: z
+      .string()
+      .optional()
+      .describe("Project ID directo (con o sin prefijo b.)."),
+    projectName: z
+      .string()
+      .optional()
+      .describe("Nombre del proyecto para resolver projectId via hub."),
+    region: z
+      .enum(["US", "EMEA", "AUS", "CAN", "DEU", "IND", "JPN", "GBR"])
+      .optional()
+      .describe("Region opcional para enrutar la peticion."),
+    payload: z
+      .record(z.string(), z.unknown())
+      .describe("Payload exacto para crear el usuario del proyecto.")
+  })
+  .refine((value) => Boolean(value.projectId || value.projectName), {
+    message: "Debes enviar projectId o projectName para identificar el proyecto.",
+    path: ["projectId"]
+  });
+
+export const ProjectUsersPatchInputSchema = z
+  .object({
+    hubId: z
+      .string()
+      .optional()
+      .describe("Hub ID para resolver projectName. Si se omite, usa APS_HUB_ID."),
+    projectId: z
+      .string()
+      .optional()
+      .describe("Project ID directo (con o sin prefijo b.)."),
+    projectName: z
+      .string()
+      .optional()
+      .describe("Nombre del proyecto para resolver projectId via hub."),
+    userId: z.string().min(1).describe("ID del usuario a actualizar en el proyecto."),
+    region: z
+      .enum(["US", "EMEA", "AUS", "CAN", "DEU", "IND", "JPN", "GBR"])
+      .optional()
+      .describe("Region opcional para enrutar la peticion."),
+    payload: z
+      .record(z.string(), z.unknown())
+      .describe("Payload exacto para PATCH del usuario del proyecto."),
+    confirm: z
+      .boolean()
+      .default(false)
+      .describe("Debe ser true para ejecutar el PATCH real.")
+  })
+  .refine((value) => Boolean(value.projectId || value.projectName), {
+    message: "Debes enviar projectId o projectName para identificar el proyecto.",
+    path: ["projectId"]
+  });

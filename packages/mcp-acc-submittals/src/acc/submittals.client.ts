@@ -20,6 +20,12 @@ type SubmittalTransitionParams = {
   payload: Record<string, unknown>;
 };
 
+type SubmittalCreateParams = {
+  token: string;
+  projectId: string;
+  payload: Record<string, unknown>;
+};
+
 const SUBMITTALS_BASE_URL =
   "https://developer.api.autodesk.com/construction/submittals/v2";
 
@@ -70,4 +76,14 @@ export async function transitionSubmittalItem(params: SubmittalTransitionParams)
       serviceName: "submittals.transitionSubmittalItem"
     }
   );
+}
+
+export async function createSubmittalItem(params: SubmittalCreateParams) {
+  const { token, projectId, payload } = params;
+  return fetchApsJson(`${SUBMITTALS_BASE_URL}/projects/${projectId}/items`, {
+    method: "POST",
+    token,
+    body: payload,
+    serviceName: "submittals.createSubmittalItem"
+  });
 }

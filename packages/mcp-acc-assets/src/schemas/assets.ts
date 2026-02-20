@@ -7,8 +7,11 @@ export const AssetSchema = z
   .object({
     id: z.string().optional(),
     name: z.string().optional(),
+    clientAssetId: z.string().optional(),
     description: z.string().optional(),
+    barcode: z.string().optional(),
     status: z.string().optional(),
+    statusId: z.string().optional(),
     assetCategoryId: z.string().optional(),
     categoryId: z.string().optional(),
     statusStepSetId: z.string().optional(),
@@ -19,7 +22,12 @@ export const AssetSchema = z
     updatedAt: z.string().optional(),
     assignedTo: z.string().optional(),
     assignedToType: z.string().optional(),
-    customAttributes: z.array(z.record(z.string(), z.unknown())).optional()
+    customAttributes: z
+      .union([
+        z.record(z.string(), z.unknown()),
+        z.array(z.record(z.string(), z.unknown()))
+      ])
+      .optional()
   })
   .passthrough();
 

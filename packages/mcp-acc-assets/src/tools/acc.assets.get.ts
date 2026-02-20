@@ -113,46 +113,127 @@ function getEntityById(
   return map[id] ?? { id, unresolved: true };
 }
 
-function resolveIdentity(
-  id: unknown,
-  usersById: Record<string, Record<string, unknown>>,
-  companiesById: Record<string, Record<string, unknown>>
+function getCustomAttributesObject(
+  value: unknown
+): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function toStringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function buildOptionsById(
+  definition: Record<string, unknown> | null
+): Record<string, Record<string, unknown>> {
+  if (!definition) return {};
+
+  const fromRoot = Array.isArray(definition.options)
+    ? (definition.options as Array<Record<string, unknown>>)
+    : [];
+
+  const metadata = definition.metadata;
+  const metadataOptions =
+    metadata &&
+    typeof metadata === "object" &&
+    (metadata as any).list &&
+    typeof (metadata as any).list === "object" &&
+    Array.isArray((metadata as any).list.options)
+      ? ((metadata as any).list.options as Array<Record<string, unknown>>)
+      : [];
+
+  const allOptions = [...fromRoot, ...metadataOptions];
+  const map: Record<string, Record<string, unknown>> = {};
+  for (const option of allOptions) {
+    const optionId =
+      toStringValue(option.id) ??
+      toStringValue(option.value) ??
+      toStringValue(option.name);
+    if (optionId) {
+      map[optionId] = option;
+    }
+  }
+  return map;
+}
+
+function resolveCustomAttributeValue(
+  raw: unknown,
+  optionsById: Record<string, Record<string, unknown>>
+): unknown {
+  if (Array.isArray(raw)) {
+    return raw.map((item) =>
+      resolveCustomAttributeValue(item, optionsById)
+    );
+  }
+
+  if (typeof raw !== "string" || !raw.trim()) {
+    return raw;
+  }
+
+  if (raw in optionsById) {
+    return optionsById[raw];
+  }
+
+  return raw;
+}
+
+function resolveCustomAttributes(
+  customAttributes: Record<string, unknown>,
+  customAttributesById: Record<string, Record<string, unknown>>
 ) {
-  if (typeof id !== "string" || !id.trim()) return null;
-  return usersById[id] ?? companiesById[id] ?? { id, unresolved: true };
+  const resolved: Array<Record<string, unknown>> = [];
+
+  for (const [attributeId, rawValue] of Object.entries(customAttributes)) {
+    const definition = customAttributesById[attributeId] ?? null;
+    const optionsById = buildOptionsById(definition);
+    resolved.push({
+      id: attributeId,
+      name:
+        toStringValue(definition?.name) ??
+        toStringValue(definition?.title) ??
+        attributeId,
+      dataType:
+        toStringValue(definition?.dataType) ??
+        toStringValue(definition?.type),
+      value: rawValue,
+      resolvedValue: resolveCustomAttributeValue(
+        rawValue,
+        optionsById
+      )
+    });
+  }
+
+  return resolved;
 }
 
 function enrichAssetResult(
   asset: AssetResult,
-  usersById: Record<string, Record<string, unknown>>,
-  companiesById: Record<string, Record<string, unknown>>,
-  categoriesById: Record<string, Record<string, unknown>>,
-  statusStepSetsById: Record<string, Record<string, unknown>>,
-  assetStatusesById: Record<string, Record<string, unknown>>
+  assetStatusesById: Record<string, Record<string, unknown>>,
+  customAttributesById: Record<string, Record<string, unknown>>
 ) {
-  const categoryId =
-    (typeof asset.categoryId === "string" && asset.categoryId) ||
-    (typeof asset.assetCategoryId === "string" && asset.assetCategoryId) ||
-    null;
-
-  const statusStepSetId =
-    (typeof asset.statusStepSetId === "string" && asset.statusStepSetId) || null;
-
-  const assetStatusId =
+  const statusId =
     (typeof asset.assetStatusId === "string" && asset.assetStatusId) ||
     (typeof asset.statusId === "string" && (asset.statusId as string)) ||
     null;
 
+  const customAttributes = getCustomAttributesObject(asset.customAttributes);
+  const resolvedCustomAttributes = resolveCustomAttributes(
+    customAttributes,
+    customAttributesById
+  );
+
   return {
-    ...asset,
-    resolvedCategory: getEntityById(categoryId, categoriesById),
-    resolvedStatusStepSet: getEntityById(statusStepSetId, statusStepSetsById),
-    resolvedAssetStatus: getEntityById(assetStatusId, assetStatusesById),
-    resolvedActors: {
-      assignedTo: resolveIdentity(asset.assignedTo, usersById, companiesById),
-      createdBy: resolveIdentity(asset.createdBy, usersById, companiesById),
-      updatedBy: resolveIdentity(asset.updatedBy, usersById, companiesById)
-    }
+    id: asset.id ?? null,
+    clientAssetId: asset.clientAssetId ?? asset.name ?? null,
+    description: asset.description ?? null,
+    barcode: asset.barcode ?? null,
+    statusId,
+    resolvedStatus: getEntityById(statusId, assetStatusesById),
+    customAttributes,
+    resolvedCustomAttributes
   };
 }
 
@@ -169,15 +250,37 @@ async function fetchContext(
   categoriesById: Record<string, Record<string, unknown>>;
   statusStepSetsById: Record<string, Record<string, unknown>>;
   assetStatusesById: Record<string, Record<string, unknown>>;
+  customAttributesById: Record<string, Record<string, unknown>>;
 }> {
   if (!enabled) {
+    const [statusesRes, customAttrsRes] = await Promise.allSettled([
+      getAssetStatuses({ token, projectId }),
+      getAssetCustomAttributes({ token, projectId })
+    ]);
+
+    const warnings: string[] = [];
+    const assetStatuses =
+      statusesRes.status === "fulfilled" ? getResultsArray(statusesRes.value) : [];
+    const customAttributes =
+      customAttrsRes.status === "fulfilled" ? getResultsArray(customAttrsRes.value) : [];
+
+    if (statusesRes.status === "rejected") {
+      warnings.push(`No se pudieron obtener asset-statuses: ${String(statusesRes.reason)}`);
+    }
+    if (customAttrsRes.status === "rejected") {
+      warnings.push(
+        `No se pudieron obtener custom-attributes de assets: ${String(customAttrsRes.reason)}`
+      );
+    }
+
     return {
-      warnings: [],
+      warnings,
       usersById: {},
       companiesById: {},
       categoriesById: {},
       statusStepSetsById: {},
-      assetStatusesById: {}
+      assetStatusesById: buildIdentityMap(assetStatuses, ["id"]),
+      customAttributesById: buildIdentityMap(customAttributes, ["id"])
     };
   }
 
@@ -256,7 +359,8 @@ async function fetchContext(
     companiesById,
     categoriesById,
     statusStepSetsById,
-    assetStatusesById
+    assetStatusesById,
+    customAttributesById
   };
 }
 
@@ -337,11 +441,8 @@ export function registerAccAssetsList(server: McpServer) {
       const enrichedResults = rawResults.map((asset) =>
         enrichAssetResult(
           asset,
-          context.usersById,
-          context.companiesById,
-          context.categoriesById,
-          context.statusStepSetsById,
-          context.assetStatusesById
+          context.assetStatusesById,
+          context.customAttributesById
         )
       );
 

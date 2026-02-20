@@ -3,6 +3,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerAccAuthTools } from "@tad/shared";
 
 import { registerAccAssetsList } from "./tools/acc.assets.get.js";
+import {
+  registerAccAssetStatusesList,
+  registerAccAssetCustomAttributesList
+} from "./tools/acc.assets.context.get.js";
 
 const server = new McpServer({
   name: "mcp-acc-assets",
@@ -11,6 +15,8 @@ const server = new McpServer({
 
 registerAccAuthTools(server);
 registerAccAssetsList(server);
+registerAccAssetStatusesList(server);
+registerAccAssetCustomAttributesList(server);
 
 async function main() {
   const transport = new StdioServerTransport();

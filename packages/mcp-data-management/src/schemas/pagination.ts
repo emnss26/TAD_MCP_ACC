@@ -1,24 +1,6 @@
-import { z } from "zod";
+import { createOffsetPaginationInputSchema } from "@tad/shared";
 
-export const DmPaginationSchema = {
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(50)
-    .default(10)
-    .describe("Cantidad maxima de proyectos a devolver por pagina."),
-  offset: z.number().int().min(0).default(0).describe("Indice de inicio."),
-  cursor: z
-    .string()
-    .optional()
-    .describe("Cursor de paginacion en formato offset:<n>. Tiene prioridad sobre offset."),
-  view: z
-    .enum(["summary", "page", "full"])
-    .default("page")
-    .describe("Nivel de detalle de salida."),
-  outputFields: z
-    .array(z.string().min(1))
-    .optional()
-    .describe("Columnas a incluir en la salida tabular (cols/rows).")
-};
+export const DmPaginationSchema = createOffsetPaginationInputSchema({
+  includeFetchAll: false,
+  limitDescription: "Cantidad maxima de proyectos a devolver por pagina."
+});

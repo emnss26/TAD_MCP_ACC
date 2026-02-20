@@ -14,7 +14,7 @@ export function registerAecProjects(server: McpServer) {
     {
       title: "AEC Data Model - List Projects",
       description:
-        "Lista proyectos por hub. Acepta hubId b.xxx (Data Management) o hubId GraphQL AEC. Si se omite, usa APS_HUB_AEC_ID.",
+        "Lista proyectos por hub AEC GraphQL (urn:...). Si se omite, usa APS_HUB_AEC_ID.",
       inputSchema: AecProjectsQuerySchema.shape,
     },
     async (args) => {
